@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# Enforces one functional scope per PR (scope-map.json, first-match-wins).
+# DECISIONS.md is metadata, not a functional scope: excluded from the scope
+# count. When changed alongside a functional scope, only new entries
+# appended at the end of the file are allowed; edits/deletions of existing
+# entries fail and require a dedicated PR touching only DECISIONS.md.
 set -Eeuo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -8,6 +13,7 @@ require_jq
 require_git
 
 SCOPE_MAP="$ROOT/scope-map.json"
+DECISIONS_FILE="DECISIONS.md"
 BASE_REF="${1:-}"
 
 cd "$ROOT"
@@ -49,6 +55,10 @@ scopes_touched=""
 
 while IFS= read -r f; do
     [[ -z "$f" ]] && continue
+    if [[ "$f" == "$DECISIONS_FILE" ]]; then
+        echo "➖ $f -> metadata (excluded from scope count)"
+        continue
+    fi
     scope="$(classify_file "$f")"
     if [[ "$scope" == "unclassified" ]]; then
         echo "❌ $f -> unclassified"
@@ -76,6 +86,23 @@ fi
 if [[ "$scope_count" -gt 1 ]]; then
     echo "❌ scope-guard: multiple scopes touched"
     status=1
+fi
+
+decisions_changed=0
+if echo "$CHANGED_FILES" | grep -qFx "$DECISIONS_FILE"; then
+    decisions_changed=1
+fi
+
+if [[ "$decisions_changed" -eq 1 && "$scope_count" -ge 1 ]]; then
+    old_decisions="$(git show "$BASE_REF:$DECISIONS_FILE" 2>/dev/null || true)"
+    new_decisions="$(cat "$DECISIONS_FILE" 2>/dev/null || true)"
+    old_len="${#old_decisions}"
+    if [[ "${new_decisions:0:old_len}" != "$old_decisions" ]]; then
+        echo "❌ scope-guard: $DECISIONS_FILE must only be appended to (new entries at the end) when changed alongside a functional scope; edits/deletions of existing entries need a dedicated PR"
+        status=1
+    else
+        echo "✅ scope-guard: $DECISIONS_FILE append-only OK"
+    fi
 fi
 
 if [[ "$status" -eq 0 ]]; then
