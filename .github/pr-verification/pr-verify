@@ -123,6 +123,13 @@ rollup_counts() {
     '
 }
 
+fetch_rollup() {
+    local check_runs statuses
+    check_runs="$(gh api --paginate "repos/$REPOSITORY/commits/$head_oid/check-runs?per_page=100" | jq -s '[.[].check_runs[]? | {name: .name, status: .status, conclusion: .conclusion, workflowName: (.app.name // "")}]')" || return 1
+    statuses="$(gh api --paginate "repos/$REPOSITORY/commits/$head_oid/statuses?per_page=100" | jq -s '[.[][]? | {name: .context, status: "COMPLETED", conclusion: .state, workflowName: ""}]')" || return 1
+    jq -n --argjson check_runs "$check_runs" --argjson statuses "$statuses" '$check_runs + $statuses'
+}
+
 scope_status="FAIL"
 scope_output=""
 scope_reason="scope-guard did not run"
@@ -145,7 +152,7 @@ pr_data='{}'
 if [[ -z "$REPOSITORY" || -z "$PR_NUMBER" ]]; then
     metadata_status="FAIL"
     metadata_reason="repository or PR number is unavailable"
-elif ! pr_data="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json number,title,baseRefName,headRefName,mergeStateStatus,statusCheckRollup 2>/dev/null)"; then
+elif ! pr_data="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json number,title,baseRefName,headRefName,headRefOid,mergeStateStatus 2>/dev/null)"; then
     metadata_status="FAIL"
     metadata_reason="GitHub PR metadata could not be read"
 fi
@@ -154,12 +161,15 @@ title="$(jq -r '.title // "unavailable"' <<<"$pr_data")"
 base_name="$(jq -r '.baseRefName // "unavailable"' <<<"$pr_data")"
 head_name="$(jq -r '.headRefName // "unavailable"' <<<"$pr_data")"
 merge_state="$(jq -r '.mergeStateStatus // "unavailable"' <<<"$pr_data")"
+head_oid="$(jq -r '.headRefOid // empty' <<<"$pr_data")"
 
 checks_status="FAIL"
 checks_reason="status checks were not read"
 rollup='[]'
-if [[ "$metadata_status" == "PASS" ]]; then
-    rollup="$(jq -c '.statusCheckRollup // []' <<<"$pr_data")"
+if [[ "$metadata_status" == "PASS" && -n "$head_oid" ]]; then
+    if ! rollup="$(fetch_rollup)"; then
+        checks_reason="status checks could not be read"
+    else
     SECONDS=0
     while :; do
         filtered_rollup="$(filter_rollup <<<"$rollup")"
@@ -183,12 +193,13 @@ if [[ "$metadata_status" == "PASS" ]]; then
         if (( POLL_SECONDS > 0 )); then
             sleep "$POLL_SECONDS"
         fi
-        if ! rollup="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json statusCheckRollup 2>/dev/null | jq -c '.statusCheckRollup // []')"; then
+        if ! rollup="$(fetch_rollup)"; then
             checks_status="FAIL"
             checks_reason="status checks could not be refreshed"
             break
         fi
     done
+    fi
 fi
 
 safe_scope_output="$scope_output"
