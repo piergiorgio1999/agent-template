@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Actions security
 
-Expected Result:
+Expected Result: non pinnata → zizmor FAIL; sintassi errata → actionlint FAIL
 
 Implementation:
 Deferred to coding agent.

@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: CI Gate
 
-Expected Result:
+Expected Result: fail rilevante → FAIL; skip legittimo → PASS; cancelled → FAIL
 
 Implementation:
 Deferred to coding agent.

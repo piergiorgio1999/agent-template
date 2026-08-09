@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Swift/Xcode
 
-Expected Result:
+Expected Result: SPM → swift test; Xcode senza config → SKIP legittimo; con config → RUN
 
 Implementation:
 Deferred to coding agent.

@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Attention
 
-Expected Result:
+Expected Result: check fallito OR conflitto OR status:attention → ATTENTION
 
 Implementation:
 Deferred to coding agent.

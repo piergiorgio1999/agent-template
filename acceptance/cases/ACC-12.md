@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Language detection
 
-Expected Result:
+Expected Result: per i 6 linguaggi: solo pertinente RUN, altri SKIP
 
 Implementation:
 Deferred to coding agent.

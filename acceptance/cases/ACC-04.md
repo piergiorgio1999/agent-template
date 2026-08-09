@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Scope: due scope funzionali
 
-Expected Result:
+Expected Result: FAIL
 
 Implementation:
 Deferred to coding agent.

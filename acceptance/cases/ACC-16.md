@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Secrets runtime
 
-Expected Result:
+Expected Result: fake secret creato al volo → Gitleaks FAIL → Gate FAIL; nulla committato
 
 Implementation:
 Deferred to coding agent.

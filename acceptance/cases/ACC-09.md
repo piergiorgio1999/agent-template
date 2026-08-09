@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Blocker
 
-Expected Result:
+Expected Result: blockedBy → BLOCKED; API assente + status:blocked → BLOCKED; nessun crash
 
 Implementation:
 Deferred to coding agent.

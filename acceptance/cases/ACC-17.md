@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Anti-rot
 
-Expected Result:
+Expected Result: script inesistente / stub errato / ADR inesistente / scope-map invalido → FAIL
 
 Implementation:
 Deferred to coding agent.

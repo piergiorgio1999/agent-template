@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Copier update
 
-Expected Result:
+Expected Result: infrastruttura aggiornata, codice project-specific intatto
 
 Implementation:
 Deferred to coding agent.
