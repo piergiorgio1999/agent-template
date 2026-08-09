@@ -9,11 +9,11 @@ copier copy <percorso-del-template> <percorso-della-repo>
 cd <percorso-della-repo>
 gh repo create --private --source . --remote origin
 git push -u origin main
-./tools/bootstrap-github
+gh api --method POST "repos/OWNER/REPOSITORY/rulesets" --input .github/ruleset.json
 ```
 
-Il template non usa Use this template come percorso canonico. Le fixture del
-template restano sotto `template-only/` e non vengono copiate nelle repo derivate.
+Il template non usa Use this template come percorso canonico. I contenuti di
+`template-only/` sono esclusi dalle repo derivate.
 
 ## Source of truth
 
@@ -30,6 +30,6 @@ Non creare `STATUS.md`, `ROADMAP.md`, `TASKS.md`, `PLAN.md` o
 
 ## Configurazione minima
 
-Impostare `template_owner` e `default_branch` durante `copier copy`. Prima della
-prima PR, sostituire `@OWNER` in `.github/CODEOWNERS` con il proprietario reale.
-
+Impostare `template_owner` e `default_branch` durante `copier copy`. Il valore
+di `template_owner` viene scritto in `.github/CODEOWNERS`; prima di applicare il
+ruleset, sostituire `OWNER/REPOSITORY` nel comando con la repository reale.

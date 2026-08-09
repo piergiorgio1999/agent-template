@@ -31,7 +31,7 @@ done
 (( bad == 0 )) || exit 1
 unique=$(printf '%b' "$functional" | sort -u | sed '/^$/d')
 count=$(printf '%s\n' "$unique" | sed '/^$/d' | wc -l | tr -d ' ')
-if (( shared )) && [[ "${SCOPE_EXCEPTION:-0}" != 1 ]]; then
+if (( shared && count > 0 )) && [[ "${SCOPE_EXCEPTION:-0}" != 1 ]]; then
   echo "functional + shared changes require scope:exception" >&2
   exit 1
 fi

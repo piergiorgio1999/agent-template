@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 test -f AGENTS.md
+test -f CLAUDE.md
 test -f DECISIONS.md
 test -f SECURITY.md
 test -f scope-map.json
@@ -13,5 +14,10 @@ if find . -maxdepth 2 -type f \( -name STATUS.md -o -name ROADMAP.md -o -name TA
   echo "Forbidden duplicate state file detected" >&2
   exit 1
 fi
+expected_tools=$'tools/agent-config-check\ntools/project-status\ntools/scope-guard'
+actual_tools=$(find tools -maxdepth 1 -type f -print | LC_ALL=C sort)
+if [[ "$actual_tools" != "$expected_tools" ]]; then
+  echo "Unexpected custom tool set" >&2
+  exit 1
+fi
 echo "agent configuration OK"
-

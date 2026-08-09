@@ -5,8 +5,7 @@ on:
     branches: [main]
 permissions:
   contents: read
-  checks: write
-  security-events: write
+  pull-requests: read
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -25,6 +24,7 @@ jobs:
         with:
           args: --offline --no-progress --root-dir . './**/*.md'
           fail: true
+          failIfEmpty: false
 
   actionlint:
     name: actionlint
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with: {persist-credentials: false}
       - name: Validate workflows
-        run: docker run --rm -v "$PWD:/repo:ro" rhysd/actionlint:1.7.7 -color
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.7 -color
 
   security:
     name: security
@@ -74,6 +74,9 @@ jobs:
     name: relevant checks
     needs: paths
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with: {persist-credentials: false}
@@ -94,7 +97,7 @@ jobs:
         run: test -z "$(gofmt -l .)" && go vet ./... && go test ./...
       - name: Shell
         if: needs.paths.outputs.shell == 'true'
-        run: find . -type f \( -name '*.sh' -o -name '*.bash' \) -print0 | xargs -0 -r -n1 shellcheck
+        run: find . -type f \( -name '*.sh' -o -name '*.bash' -o -path './tools/*' \) -print0 | xargs -0 -r -n1 shellcheck
       - name: Test reporter
         if: always() && hashFiles('reports/**/*.xml') != ''
         uses: dorny/test-reporter@7b7927aa7da8b82e81e755810cb51f39941a2cc7 # v2.2.0
@@ -137,4 +140,3 @@ jobs:
               ;;
             *) exit 0 ;;
           esac
-

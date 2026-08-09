@@ -1,5 +1,10 @@
 _min_copier_version: "9.0.0"
-_subdirectory: template-only
+_exclude:
+  - .git
+  - .git/**
+  - copier.yml
+  - template-only
+  - template-only/**
 project_name:
   type: str
   default: agent-project
@@ -9,4 +14,3 @@ template_owner:
 default_branch:
   type: str
   default: main
-

@@ -17,8 +17,8 @@ go:
 shell:
   - '**/*.sh'
   - '**/*.bash'
+  - 'tools/**'
 container:
   - 'Dockerfile*'
   - '**/*.tf'
   - '**/docker-compose*.yml'
-

@@ -1,9 +1,7 @@
-# Replace @OWNER before enabling branch protection.
-/.github/ @OWNER
-/AGENTS.md @OWNER
-/CLAUDE.md @OWNER
-/DECISIONS.md @OWNER
-/SECURITY.md @OWNER
-/scope-map.json @OWNER
-/tools/ @OWNER
-
+/.github/ @{{ template_owner }}
+/AGENTS.md @{{ template_owner }}
+/CLAUDE.md @{{ template_owner }}
+/DECISIONS.md @{{ template_owner }}
+/SECURITY.md @{{ template_owner }}
+/scope-map.json @{{ template_owner }}
+/tools/ @{{ template_owner }}
