@@ -24,10 +24,13 @@ done
 
 command -v jq >/dev/null 2>&1 || { echo "project-status: jq is required" >&2; exit 1; }
 
-gh_args=()
-if [[ -n "$REPO" ]]; then
-    gh_args+=(--repo "$REPO")
-fi
+gh_with_repo() {
+    if [[ -n "$REPO" ]]; then
+        gh "$@" --repo "$REPO"
+    else
+        gh "$@"
+    fi
+}
 
 run_gh() {
     if [[ -n "${PROJECT_STATUS_MOCK_DIR:-}" ]]; then
@@ -39,8 +42,8 @@ run_gh() {
         return
     fi
     case "$1" in
-        issues) gh issue list "${gh_args[@]}" --state all --limit 1000 --json number,title,state,labels,milestone,subIssues,blockedBy,blocking ;;
-        prs) gh pr list "${gh_args[@]}" --state all --limit 1000 --json number,title,state,closingIssuesReferences,statusCheckRollup,mergeStateStatus ;;
+        issues) gh_with_repo issue list --state all --limit 1000 --json number,title,state,labels,milestone,subIssues,blockedBy,blocking ;;
+        prs) gh_with_repo pr list --state all --limit 1000 --json number,title,state,closingIssuesReferences,statusCheckRollup,mergeStateStatus ;;
         repo)
             if [[ -n "$REPO" ]]; then
                 gh repo view "$REPO" --json nameWithOwner --jq '.nameWithOwner'
@@ -57,7 +60,7 @@ if [[ -n "${PROJECT_STATUS_MOCK_DIR:-}" ]]; then
 else
     command -v gh >/dev/null 2>&1 || { echo "project-status: gh is required" >&2; exit 1; }
     gh_version="$(gh version | head -n 1)"
-    if ! gh pr list "${gh_args[@]}" --state all --limit 1 --json number,closingIssuesReferences >/dev/null 2>&1; then
+    if ! gh_with_repo pr list --state all --limit 1 --json number,closingIssuesReferences >/dev/null 2>&1; then
         echo "project-status: $gh_version does not support closingIssuesReferences; upgrade gh and retry" >&2
         exit 1
     fi
@@ -66,7 +69,7 @@ else
         issue_features=true
     else
         issue_features=false
-        issues_json="$(gh issue list "${gh_args[@]}" --state all --limit 1000 --json number,title,state,labels,milestone)"
+        issues_json="$(gh_with_repo issue list --state all --limit 1000 --json number,title,state,labels,milestone)"
     fi
 fi
 
