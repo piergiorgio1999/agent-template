@@ -44,6 +44,7 @@ classify_file() {
     local file="$1" name pattern
     while IFS= read -r name; do
         while IFS= read -r pattern; do
+            # shellcheck disable=SC2053
             [[ "$file" == $pattern ]] && { echo "$name"; return 0; }
         done <<< "$(jq -r --arg n "$name" '.scopes[] | select(.name==$n) | .paths[]' "$SCOPE_MAP")"
     done <<< "$SCOPE_NAMES"
@@ -73,6 +74,23 @@ done <<< "$CHANGED_FILES"
 unique_scopes="$(echo "$scopes_touched" | sed '/^$/d' | sort -u)"
 scope_count="$(echo "$unique_scopes" | sed '/^$/d' | wc -l | tr -d ' ')"
 
+has_scope_exception=0
+labels=""
+if [[ -n "${SCOPE_EXCEPTION_LABELS:-}" ]]; then
+    labels="$(printf '%s\n' "$SCOPE_EXCEPTION_LABELS" | tr ',' '\n')"
+elif [[ -n "${GITHUB_EVENT_PATH:-}" && -f "$GITHUB_EVENT_PATH" ]]; then
+    pr_number="$(jq -r '.pull_request.number // empty' "$GITHUB_EVENT_PATH")"
+    if [[ -n "$pr_number" ]] && command -v gh >/dev/null 2>&1; then
+        labels="$(gh pr view "$pr_number" --json labels --jq '.labels[].name' 2>/dev/null || true)"
+    fi
+fi
+while IFS= read -r label; do
+    if [[ "$label" == "scope:exception" ]]; then
+        has_scope_exception=1
+        break
+    fi
+done <<< "$labels"
+
 echo
 echo "Scopes touched: ${unique_scopes:-none}"
 
@@ -83,9 +101,11 @@ if [[ "$unclassified" -eq 1 ]]; then
     status=1
 fi
 
-if [[ "$scope_count" -gt 1 ]]; then
+if [[ "$scope_count" -gt 1 && "$has_scope_exception" -eq 0 ]]; then
     echo "❌ scope-guard: multiple scopes touched"
     status=1
+elif [[ "$scope_count" -gt 1 ]]; then
+    echo "⚠️ scope-guard: scope:exception allows multiple scopes"
 fi
 
 decisions_changed=0
