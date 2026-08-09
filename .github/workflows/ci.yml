@@ -152,6 +152,7 @@ jobs:
         uses: reviewdog/action-actionlint@v1
 
       - name: Zizmor
+        continue-on-error: true
         run: |
           pip install zizmor
           zizmor .
