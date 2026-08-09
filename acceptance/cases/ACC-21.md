@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Bootstrap re-run
 
-Expected Result:
+Expected Result: nessuna distruzione/duplicazione, stato segnalato
 
 Implementation:
 Deferred to coding agent.

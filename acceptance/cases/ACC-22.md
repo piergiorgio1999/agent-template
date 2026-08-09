@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Ruleset degradation
 
-Expected Result:
+Expected Result: unsupported → WARNING+skip; proprietà indispensabile assente → FAIL
 
 Implementation:
 Deferred to coding agent.

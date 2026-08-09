@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Scope: file non classificato
 
-Expected Result:
+Expected Result: FAIL
 
 Implementation:
 Deferred to coding agent.

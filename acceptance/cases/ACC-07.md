@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Scope: funzionale+shared con scope:exception
 
-Expected Result:
+Expected Result: PASS
 
 Implementation:
 Deferred to coding agent.

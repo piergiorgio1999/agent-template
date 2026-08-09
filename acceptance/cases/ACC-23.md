@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Label sync
 
-Expected Result:
+Expected Result: canoniche sincronizzate; extra conservate
 
 Implementation:
 Deferred to coding agent.

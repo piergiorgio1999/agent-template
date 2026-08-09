@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Single-owner workflow
 
-Expected Result:
+Expected Result: PR mergiata senza self-approval Code Owner; nessun deadlock
 
 Implementation:
 Deferred to coding agent.

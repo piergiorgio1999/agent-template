@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: gh version
 
-Expected Result:
+Expected Result: gh vecchio o closingIssuesReferences assente → FAIL chiaro
 
 Implementation:
 Deferred to coding agent.

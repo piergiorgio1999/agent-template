@@ -10,6 +10,8 @@ Non aggiornare manualmente roadmap, task list o status.
 
 ## Prima di lavorare
 
+Prima di qualsiasi modifica, leggi `SPEC-V1.md`.
+
 Leggi nell'ordine:
 
 1. Project Status Digest
@@ -57,4 +59,3 @@ Non salvarlo come stato permanente.
 Usare prima i controlli deterministici.
 
 Ricorrere al modello LLM solo quando i controlli automatici non sono sufficienti.
-

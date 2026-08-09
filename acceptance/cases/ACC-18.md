@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Digest
 
-Expected Result:
+Expected Result: JSON conforme schema; text ≤8KiB AND ≤100 righe; read-only; nessun repo scan
 
 Implementation:
 Deferred to coding agent.

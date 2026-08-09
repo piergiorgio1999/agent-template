@@ -2,9 +2,9 @@
 
 Status: TODO
 
-Purpose:
+Purpose: Linking Fixes #N
 
-Expected Result:
+Expected Result: IN PROGRESS con PR open; DONE dopo merge/close
 
 Implementation:
 Deferred to coding agent.
