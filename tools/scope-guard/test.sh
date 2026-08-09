@@ -45,6 +45,11 @@ run_guard() {
     (cd "$dir" && ./tools/scope-guard/scope-guard main)
 }
 
+run_guard_with_exception() {
+    local dir="$1"
+    (cd "$dir" && SCOPE_EXCEPTION_LABELS="scope:exception" ./tools/scope-guard/scope-guard main)
+}
+
 # Case 1: single functional scope only -> pass
 repo="$(make_repo)"
 mkdir -p "$repo/tools/scope-guard"
@@ -64,7 +69,17 @@ git -C "$repo" commit -q -m "two scopes"
 assert_exit "two functional scopes fails" 1 run_guard "$repo"
 rm -rf "$repo"
 
-# Case 3: DECISIONS.md alone (no functional scope) -> pass, edits allowed
+# Case 3: two functional scopes with scope:exception -> pass
+repo="$(make_repo)"
+mkdir -p "$repo/tools/scope-guard" "$repo/checks/python"
+echo "x" > "$repo/tools/scope-guard/thing"
+echo "y" > "$repo/checks/python/thing"
+git -C "$repo" add -A
+git -C "$repo" commit -q -m "two scopes with exception"
+assert_exit "two functional scopes with scope:exception pass" 0 run_guard_with_exception "$repo"
+rm -rf "$repo"
+
+# Case 4: DECISIONS.md alone (no functional scope) -> pass, edits allowed
 repo="$(make_repo)"
 printf '# Architectural Decisions\n\n## entry one (edited)\n\nchanged.\n' > "$repo/DECISIONS.md"
 git -C "$repo" add -A
@@ -72,7 +87,7 @@ git -C "$repo" commit -q -m "decisions only, edited"
 assert_exit "DECISIONS.md-only edit passes (dedicated PR path)" 0 run_guard "$repo"
 rm -rf "$repo"
 
-# Case 4: DECISIONS.md excluded from scope count -> single functional scope + appended decision -> pass
+# Case 5: DECISIONS.md excluded from scope count -> single functional scope + appended decision -> pass
 repo="$(make_repo)"
 mkdir -p "$repo/tools/scope-guard"
 echo "x" > "$repo/tools/scope-guard/thing"
@@ -82,7 +97,7 @@ git -C "$repo" commit -q -m "single scope + appended decision"
 assert_exit "single scope + DECISIONS.md append passes" 0 run_guard "$repo"
 rm -rf "$repo"
 
-# Case 5: single functional scope + DECISIONS.md edit of existing entry -> fail
+# Case 6: single functional scope + DECISIONS.md edit of existing entry -> fail
 repo="$(make_repo)"
 mkdir -p "$repo/tools/scope-guard"
 echo "x" > "$repo/tools/scope-guard/thing"
@@ -92,7 +107,7 @@ git -C "$repo" commit -q -m "single scope + edited decision"
 assert_exit "single scope + DECISIONS.md edit fails" 1 run_guard "$repo"
 rm -rf "$repo"
 
-# Case 6: single functional scope + DECISIONS.md deletion of existing entry -> fail
+# Case 7: single functional scope + DECISIONS.md deletion of existing entry -> fail
 repo="$(make_repo)"
 mkdir -p "$repo/tools/scope-guard"
 echo "x" > "$repo/tools/scope-guard/thing"
