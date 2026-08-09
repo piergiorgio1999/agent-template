@@ -1,26 +1,12 @@
-name: Task
-description: Track a bounded task
-title: "[Task] "
-labels: ["type:task"]
+name: task
+description: task
+title: "[task] "
+labels:
+  - task
 body:
   - type: textarea
-    id: goal
-    attributes: {label: Goal}
-    validations: {required: true}
-  - type: textarea
-    id: scope
-    attributes: {label: Scope}
-    validations: {required: true}
-  - type: textarea
-    id: acceptance
-    attributes: {label: Acceptance criteria}
-    validations: {required: true}
-  - type: textarea
-    id: verify
-    attributes: {label: Verify}
-    validations: {required: true}
-  - type: textarea
-    id: decisions
-    attributes: {label: Decision references}
-    validations: {required: true}
-
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true

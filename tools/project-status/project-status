@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+DIR="$(cd "$(dirname "$0")" && pwd)"
+
+case "${1:-md}" in
+    json)
+        "$DIR/json-format" "$DIR/fixtures/sample.json"
+        ;;
+    md)
+        "$DIR/md-format" "$DIR/fixtures/sample.json"
+        ;;
+    *)
+        echo "Usage:"
+        echo "project-status [md|json]"
+        exit 1
+        ;;
+esac

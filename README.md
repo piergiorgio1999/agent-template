@@ -1,35 +1,11 @@
-# Agent Template V0.1
+# {{ project_name }}
 
-Template GitHub-native per repository gestite tramite Issues, PR e CI Gate.
+Repository generato tramite il Template Agent.
 
-## Creazione di una repository derivata
+Questo repository segue il modello GitHub-native:
 
-```sh
-copier copy <percorso-del-template> <percorso-della-repo>
-cd <percorso-della-repo>
-gh repo create --private --source . --remote origin
-git push -u origin main
-gh api --method POST "repos/OWNER/REPOSITORY/rulesets" --input .github/ruleset.json
-```
-
-Il template non usa Use this template come percorso canonico. I contenuti di
-`template-only/` sono esclusi dalle repo derivate.
-
-## Source of truth
-
-- istruzioni: `AGENTS.md`
-- decisioni: `DECISIONS.md`
-- scope: `scope-map.json`
-- lavoro e decomposizione: GitHub Issues e sub-issues
-- implementazione: PR
-- verifica: Checks/Actions
-- stato: `tools/project-status` (digest read-only)
-
-Non creare `STATUS.md`, `ROADMAP.md`, `TASKS.md`, `PLAN.md` o
-`PROJECT_STATE.json`.
-
-## Configurazione minima
-
-Impostare `template_owner` e `default_branch` durante `copier copy`. Il valore
-di `template_owner` viene scritto in `.github/CODEOWNERS`; prima di applicare il
-ruleset, sostituire `OWNER/REPOSITORY` nel comando con la repository reale.
+- GitHub come unica source of truth
+- CI deterministica
+- Scope isolation
+- Agent-friendly
+- Copier updatable

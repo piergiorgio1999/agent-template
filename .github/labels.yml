@@ -1,19 +1,23 @@
 - name: priority:P0
-  color: "b60205"
-- name: priority:P1
-  color: "d93f0b"
-- name: priority:P2
-  color: "fbca04"
-- name: status:blocked
-  color: "5319e7"
-- name: status:attention
-  color: "e99695"
-- name: type:feature
-  color: "1d76db"
-- name: type:bug
-  color: "d73a4a"
-- name: type:task
-  color: "0e8a16"
-- name: scope:exception
-  color: "cfd3d7"
+  color: "B60205"
 
+- name: priority:P1
+  color: "D93F0B"
+
+- name: priority:P2
+  color: "FBCA04"
+
+- name: status:blocked
+  color: "5319E7"
+
+- name: scope:exception
+  color: "0E8A16"
+
+- name: bug
+  color: "D73A4A"
+
+- name: enhancement
+  color: "A2EEEF"
+
+- name: documentation
+  color: "0075CA"

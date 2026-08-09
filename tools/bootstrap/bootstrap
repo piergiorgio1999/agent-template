@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+echo "====================================="
+echo "Agent Template Bootstrap"
+echo "====================================="
+
+command -v gh >/dev/null || {
+  echo "Missing gh"
+  exit 1
+}
+
+command -v git >/dev/null || {
+  echo "Missing git"
+  exit 1
+}
+
+command -v jq >/dev/null || {
+  echo "Missing jq"
+  exit 1
+}
+
+command -v copier >/dev/null || {
+  echo "Missing copier"
+  exit 1
+}
+
+echo
+echo "TODO:"
+echo " - copier copy"
+echo " - gh repo create"
+echo " - push"
+echo " - apply rulesets"
+echo " - trigger label sync"
+echo " - verify CI"
+
+echo
+echo "Bootstrap skeleton ready."

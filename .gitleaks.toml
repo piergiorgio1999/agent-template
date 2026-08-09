@@ -1,7 +1,7 @@
-[extend]
-useDefault = true
+title = "Template Gitleaks"
 
 [allowlist]
-description = "Only non-secret template metadata"
-paths = ['''^template-only/''']
-
+paths = [
+  '''template-fixtures/.*''',
+  '''tests/fixtures/.*'''
+]
