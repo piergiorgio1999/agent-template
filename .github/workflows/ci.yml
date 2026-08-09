@@ -38,28 +38,123 @@ jobs:
     needs: scope-guard
     runs-on: ubuntu-latest
     outputs:
-      typescript: "false"
-      swift: "false"
-      python: "false"
-      rust: "false"
-      go: "false"
-      shell: "false"
+      typescript: ${{ steps.detect.outputs.typescript }}
+      swift: ${{ steps.detect.outputs.swift }}
+      python: ${{ steps.detect.outputs.python }}
+      rust: ${{ steps.detect.outputs.rust }}
+      go: ${{ steps.detect.outputs.go }}
+      shell: ${{ steps.detect.outputs.shell }}
     steps:
-      - run: echo "Language detection placeholder"
+      - uses: actions/checkout@v4
+
+      - name: Detect languages
+        id: detect
+        run: |
+          detect() {
+            local name="$1"; shift
+            for f in "$@"; do
+              if [[ -e "$f" ]]; then
+                echo "$name=true" >> "$GITHUB_OUTPUT"
+                return
+              fi
+            done
+            echo "$name=false" >> "$GITHUB_OUTPUT"
+          }
+          detect typescript package.json tsconfig.json
+          detect swift Package.swift
+          detect python pyproject.toml setup.py requirements.txt
+          detect rust Cargo.toml
+          detect go go.mod
+          if [[ -n "$(find . -type f -name '*.sh' -not -path './.git/*' -print -quit)" ]]; then
+            echo "shell=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "shell=false" >> "$GITHUB_OUTPUT"
+          fi
 
   checks:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Language checkers placeholder"
+      - uses: actions/checkout@v4
+
+      - name: Install shellcheck
+        if: needs.detect.outputs.shell == 'true'
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Shell check
+        if: needs.detect.outputs.shell == 'true'
+        run: ./checks/shell/check.sh
+
+      - name: Setup Go
+        if: needs.detect.outputs.go == 'true'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Go check
+        if: needs.detect.outputs.go == 'true'
+        run: ./checks/go/check.sh
+
+      - name: Setup Python
+        if: needs.detect.outputs.python == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Python check
+        if: needs.detect.outputs.python == 'true'
+        run: |
+          pip install ruff
+          ./checks/python/check.sh
+
+      - name: Setup Rust
+        if: needs.detect.outputs.rust == 'true'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Rust check
+        if: needs.detect.outputs.rust == 'true'
+        run: ./checks/rust/check.sh
+
+      - name: Setup Node
+        if: needs.detect.outputs.typescript == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: TypeScript check
+        if: needs.detect.outputs.typescript == 'true'
+        run: ./checks/typescript/check.sh
+
+      - name: Setup Swift
+        if: needs.detect.outputs.swift == 'true'
+        uses: swift-actions/setup-swift@v2
+
+      - name: Swift check
+        if: needs.detect.outputs.swift == 'true'
+        run: ./checks/swift/check.sh
 
   security:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Gitleaks placeholder"
-      - run: echo "Actionlint placeholder"
-      - run: echo "Zizmor placeholder"
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Actionlint
+        uses: reviewdog/action-actionlint@v1
+
+      - name: Zizmor
+        run: |
+          pip install zizmor
+          zizmor .
 
   gate:
     if: always()

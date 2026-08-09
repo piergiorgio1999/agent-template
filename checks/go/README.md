@@ -1,10 +1,7 @@
 # go checker
 
-Status: Dormant
+Status: Active
 
-Purpose
-- Activated only when:
-  - language manifest exists
-  - changed paths require it
-
-Implementation is intentionally deferred.
+Activated by the `checks` CI job when `detect` finds the language
+manifest for go. The check itself no-ops (exit 0) if the manifest
+is absent, so it is safe to run unconditionally too.

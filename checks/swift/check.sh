@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-echo "swift checker placeholder"
+if [[ ! -f Package.swift ]]; then
+    echo "no Package.swift found, skipping"
+    exit 0
+fi
 
-exit 0
+swift build
+
+if command -v swiftlint >/dev/null 2>&1; then
+    swiftlint
+fi
