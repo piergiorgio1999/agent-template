@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-echo "Release preparation placeholder"
-
-echo "- Validate"
-echo "- Acceptance"
-echo "- Tag"
-echo "- Notes"
-
-exit 0
+echo "not implemented" >&2
+exit 2
