@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+source "$ROOT/tools/lib/common.sh"
+
+require_jq
+
+cd "$ROOT"
+
+status=0
+
+check() {
+    local desc="$1" cond="$2"
+    if eval "$cond"; then
+        echo "✅ $desc"
+    else
+        echo "❌ $desc"
+        status=1
+    fi
+}
+
+check "AGENTS.md exists" '[[ -f AGENTS.md ]]'
+check "CLAUDE.md exists" '[[ -f CLAUDE.md ]]'
+check "CLAUDE.md references AGENTS.md" 'grep -qi "AGENTS.md" CLAUDE.md 2>/dev/null'
+check "DECISIONS.md exists" '[[ -f DECISIONS.md ]]'
+check "scope-map.json is valid JSON" 'jq . scope-map.json >/dev/null 2>&1'
+
+if [[ -f TEMPLATE_VERSION && -f config/template/version.json ]]; then
+    file_version="$(tr -d '[:space:]' < TEMPLATE_VERSION)"
+    json_version="$(jq -r '.templateVersion' config/template/version.json)"
+    check "TEMPLATE_VERSION matches config/template/version.json ($file_version)" '[[ "$file_version" == "$json_version" ]]'
+else
+    echo "❌ TEMPLATE_VERSION / config/template/version.json missing"
+    status=1
+fi
+
+echo
+if [[ "$status" -eq 0 ]]; then
+    echo "✅ agent-config-check: OK"
+else
+    echo "❌ agent-config-check: FAILED"
+fi
+
+exit "$status"

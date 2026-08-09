@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+source "$ROOT/tools/lib/common.sh"
+
+require_jq
+require_git
+
+SCOPE_MAP="$ROOT/scope-map.json"
+BASE_REF="${1:-}"
+
+cd "$ROOT"
+
+if [[ -z "$BASE_REF" ]]; then
+    if git rev-parse --verify origin/main >/dev/null 2>&1; then
+        BASE_REF="origin/main"
+    elif git rev-parse --verify HEAD~1 >/dev/null 2>&1; then
+        BASE_REF="HEAD~1"
+    else
+        echo "scope-guard: no base ref available, nothing to compare"
+        exit 0
+    fi
+fi
+
+git rev-parse --verify "$BASE_REF" >/dev/null 2>&1 || die "Invalid base ref: $BASE_REF"
+
+CHANGED_FILES="$(git diff --name-only "$BASE_REF"...HEAD)"
+
+if [[ -z "$CHANGED_FILES" ]]; then
+    echo "scope-guard: no changed files"
+    exit 0
+fi
+
+SCOPE_NAMES="$(jq -r '.scopes[].name' "$SCOPE_MAP")"
+
+classify_file() {
+    local file="$1" name pattern
+    while IFS= read -r name; do
+        while IFS= read -r pattern; do
+            [[ "$file" == $pattern ]] && { echo "$name"; return 0; }
+        done <<< "$(jq -r --arg n "$name" '.scopes[] | select(.name==$n) | .paths[]' "$SCOPE_MAP")"
+    done <<< "$SCOPE_NAMES"
+    echo "unclassified"
+}
+
+unclassified=0
+scopes_touched=""
+
+while IFS= read -r f; do
+    [[ -z "$f" ]] && continue
+    scope="$(classify_file "$f")"
+    if [[ "$scope" == "unclassified" ]]; then
+        echo "❌ $f -> unclassified"
+        unclassified=1
+    else
+        echo "✅ $f -> $scope"
+        scopes_touched="$scopes_touched
+$scope"
+    fi
+done <<< "$CHANGED_FILES"
+
+unique_scopes="$(echo "$scopes_touched" | sed '/^$/d' | sort -u)"
+scope_count="$(echo "$unique_scopes" | sed '/^$/d' | wc -l | tr -d ' ')"
+
+echo
+echo "Scopes touched: ${unique_scopes:-none}"
+
+status=0
+
+if [[ "$unclassified" -eq 1 ]]; then
+    echo "❌ scope-guard: unclassified files present"
+    status=1
+fi
+
+if [[ "$scope_count" -gt 1 ]]; then
+    echo "❌ scope-guard: multiple scopes touched"
+    status=1
+fi
+
+if [[ "$status" -eq 0 ]]; then
+    echo "✅ scope-guard: single scope OK"
+fi
+
+exit "$status"

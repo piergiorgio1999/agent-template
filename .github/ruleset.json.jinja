@@ -1,12 +1,25 @@
 {
-  "name": "main protection",
+  "name": "Template Ruleset",
   "target": "branch",
   "enforcement": "active",
-  "conditions": {"ref_name": {"include": ["refs/heads/{{ default_branch }}"], "exclude": []}},
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "~DEFAULT_BRANCH"
+      ]
+    }
+  },
   "rules": [
-    {"type": "deletion"},
-    {"type": "non_fast_forward"},
-    {"type": "pull_request", "parameters": {"required_approving_review_count": 0, "dismiss_stale_reviews_on_push": true, "require_code_owner_review": false, "required_status_checks": [{"context": "CI Gate", "integration_id": 15368}], "required_review_thread_resolution": true}}
+    {
+      "type": "required_pull_request_reviews",
+      "parameters": {
+{% if not single_owner %}
+        "require_code_owner_review": true,
+{% else %}
+        "require_code_owner_review": false,
+{% endif %}
+        "required_approving_review_count": 1
+      }
+    }
   ]
 }
-
