@@ -22,7 +22,6 @@ while (($#)); do
     shift
 done
 
-command -v gh >/dev/null 2>&1 || { echo "project-status: gh is required" >&2; exit 1; }
 command -v jq >/dev/null 2>&1 || { echo "project-status: jq is required" >&2; exit 1; }
 
 gh_args=()
@@ -56,6 +55,7 @@ if [[ -n "${PROJECT_STATUS_MOCK_DIR:-}" ]]; then
     issues_json="$(run_gh issues)"
     prs_json="$(run_gh prs)"
 else
+    command -v gh >/dev/null 2>&1 || { echo "project-status: gh is required" >&2; exit 1; }
     gh_version="$(gh version | head -n 1)"
     if ! gh pr list "${gh_args[@]}" --state all --limit 1 --json number,closingIssuesReferences >/dev/null 2>&1; then
         echo "project-status: $gh_version does not support closingIssuesReferences; upgrade gh and retry" >&2
