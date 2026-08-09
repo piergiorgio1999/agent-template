@@ -39,3 +39,17 @@ remediation è un lavoro separato, a scope singolo (`github`).
 
 Al termine della remediation, rimuovere `continue-on-error: true` dallo
 step `Zizmor` e ripristinare zizmor come blocking.
+
+## 2026-08-09 — Remediation completata, zizmor torna blocking
+
+Remediation dei 43 finding preesistenti (issue #8) completata in tutti
+i workflow (`.github/workflows/ci.yml`, `label-sync.yml`,
+`checker-selftest.yml`) e in `.github/dependabot.yml`: azioni pinnate
+a hash di commit (con commento `# vX`), `permissions` minimi espliciti
+per job, `persist-credentials: false` su ogni `actions/checkout`,
+rimossa l'interpolazione diretta di `github.base_ref` in uno `run:`
+(passata via `env:`), aggiunto `cooldown.default-days: 7` alle regole
+Dependabot. `zizmor .` risulta pulito (0 finding).
+
+Rimosso `continue-on-error: true` dallo step `Zizmor`: torna blocking
+come da piano di rientro della decisione precedente.
