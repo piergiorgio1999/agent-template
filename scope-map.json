@@ -49,7 +49,8 @@
       "name": "shell",
       "paths": [
         "checks/shell/**",
-        "tools/**"
+        "tools/**",
+        "scripts/**"
       ]
     },
     {
@@ -57,6 +58,21 @@
       "paths": [
         "template-fixtures/**",
         "tests/fixtures/**"
+      ]
+    },
+    {
+      "name": "template",
+      "paths": [
+        ".template/**",
+        "config/**",
+        "schemas/**",
+        "contracts/**",
+        "ci/**",
+        "acceptance/**",
+        "copier.yml",
+        "scope-map.json",
+        "TEMPLATE_VERSION",
+        ".gitleaks.toml"
       ]
     }
   ]

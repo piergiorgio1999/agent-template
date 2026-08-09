@@ -71,4 +71,10 @@ jobs:
       - security
     runs-on: ubuntu-latest
     steps:
-      - run: echo "CI Gate placeholder"
+      - name: CI Gate
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "❌ CI Gate: one or more required jobs failed"
+            exit 1
+          fi
+          echo "✅ CI Gate: all required jobs passed"
