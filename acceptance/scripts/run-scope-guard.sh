@@ -26,17 +26,21 @@ make_repo() {
 run_case() {
     local id="$1" expected="$2" description="$3" dir actual=0
     dir="$(make_repo)"
-    mkdir -p "$dir/shared/core" "$dir/checks/python" "$dir/tools/scope-guard"
+    mkdir -p "$dir/checks/python" "$dir/tools/scope-guard"
     case "$id" in
         ACC-03) printf x > "$dir/unclassified.txt" ;;
         ACC-04) printf x > "$dir/tools/scope-guard/change"; printf y > "$dir/checks/python/change" ;;
         ACC-05) printf x > "$dir/tools/scope-guard/change" ;;
-        ACC-06) printf x > "$dir/tools/scope-guard/change"; printf y > "$dir/shared/core/change" ;;
-        ACC-07) printf x > "$dir/tools/scope-guard/change"; printf y > "$dir/shared/core/change" ;;
+        ACC-06) mkdir -p "$dir/shared/core"; printf x > "$dir/tools/scope-guard/change"; printf y > "$dir/shared/core/change" ;;
+        ACC-07) printf x > "$dir/tools/scope-guard/change"; printf y > "$dir/checks/python/change" ;;
     esac
     git -C "$dir" add -A
     git -C "$dir" commit -q -m "$id"
-    (cd "$dir" && ./tools/scope-guard/scope-guard main) >"$dir/output" 2>&1 || actual=$?
+    if [[ "$id" == "ACC-07" ]]; then
+        (cd "$dir" && SCOPE_EXCEPTION_LABELS="scope:exception" ./tools/scope-guard/scope-guard main) >"$dir/output" 2>&1 || actual=$?
+    else
+        (cd "$dir" && ./tools/scope-guard/scope-guard main) >"$dir/output" 2>&1 || actual=$?
+    fi
     if [[ "$actual" == "$expected" ]]; then
         echo "PASS $id: $description"
         pass=$((pass + 1))
@@ -52,7 +56,7 @@ run_case ACC-03 1 "unclassified file fails"
 run_case ACC-04 1 "two functional scopes fail"
 run_case ACC-05 0 "one functional scope passes"
 run_case ACC-06 1 "shared without exception fails"
-run_case ACC-07 0 "shared with scope:exception passes"
+run_case ACC-07 0 "two functional scopes with scope:exception pass"
 
 echo "scope guard: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
