@@ -1,0 +1,110 @@
+name: PR Verification
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  pr_verification:
+    name: pr-verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run PR verification
+        id: verify
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_REF: origin/${{ github.base_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+          PR_VERIFY_CHECK_NAME: pr-verification
+          PR_VERIFY_TIMEOUT_SECONDS: 300
+          PR_VERIFY_POLL_SECONDS: 10
+          PR_VERIFY_REPORT_FILE: ${{ runner.temp }}/pr-verification-report.md
+        run: |
+          : > "$PR_VERIFY_REPORT_FILE"
+          set +e
+          .github/pr-verification/pr-verify > "$PR_VERIFY_REPORT_FILE"
+          rc=$?
+          set -e
+          cat "$PR_VERIFY_REPORT_FILE" >> "$GITHUB_STEP_SUMMARY"
+          exit "$rc"
+
+      - name: Upload verification report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pr-verification-report
+          path: ${{ runner.temp }}/pr-verification-report.md
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Enforce verification result
+        if: steps.verify.outcome == 'failure'
+        run: |
+          echo "PR verification failed"
+          exit 1
+
+  publish_report:
+    name: publish-pr-verification-report
+    if: always()
+    needs: pr_verification
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Download verification report
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: pr-verification-report
+          path: ${{ runner.temp }}/pr-verification-report
+
+      - name: Publish report or document fork limitation
+        if: always()
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          REPORT_FILE: ${{ runner.temp }}/pr-verification-report/pr-verification-report.md
+        run: |
+          set -Eeuo pipefail
+          marker='<!-- pr-verification:report -->'
+          if [[ -s "$REPORT_FILE" ]]; then
+            report="$(cat "$REPORT_FILE")"
+          else
+            report="$marker"
+            report+=$'\n## PR verification\n\nNo report was produced.'
+          fi
+          printf '%s\n' "$report" >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$HEAD_REPOSITORY" != "$REPOSITORY" ]]; then
+            echo 'Fork PR detected: pull_request tokens cannot write PR comments.'
+            echo 'The verification report remains available in the verification job summary.'
+            exit 0
+          fi
+
+          comment_id="$(gh api --paginate "repos/$REPOSITORY/issues/$PR_NUMBER/comments?per_page=100" --jq '.[] | select((.body // "") | contains("<!-- pr-verification:report -->")) | .id' | tail -n 1)"
+          if [[ -n "$comment_id" ]]; then
+            gh api --method PATCH "repos/$REPOSITORY/issues/comments/$comment_id" -f body="$report" >/dev/null
+          else
+            gh api --method POST "repos/$REPOSITORY/issues/$PR_NUMBER/comments" -f body="$report" >/dev/null
+          fi

@@ -1,0 +1,225 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$ROOT"
+
+MARKER='<!-- pr-verification:report -->'
+BASE_REF="${BASE_REF:-${GITHUB_BASE_REF:-main}}"
+PR_NUMBER="${PR_NUMBER:-${GITHUB_PR_NUMBER:-}}"
+REPOSITORY="${REPOSITORY:-${GITHUB_REPOSITORY:-}}"
+TIMEOUT_SECONDS="${PR_VERIFY_TIMEOUT_SECONDS:-300}"
+POLL_SECONDS="${PR_VERIFY_POLL_SECONDS:-10}"
+SELF_CHECK_NAME="${PR_VERIFY_CHECK_NAME:-pr-verification}"
+WORKFLOW_NAME="${GITHUB_WORKFLOW:-PR Verification}"
+REPORT_FILE="${PR_VERIFY_REPORT_FILE:-${TMPDIR:-/tmp}/pr-verification-report.$$}"
+
+usage() {
+    echo "Usage: pr-verify [--base-ref REF] [--pr NUMBER] [--repo OWNER/REPO] [--timeout-seconds N] [--poll-seconds N]" >&2
+}
+
+while (($#)); do
+    case "$1" in
+        --base-ref)
+            (($# >= 2)) || { usage; exit 2; }
+            BASE_REF="$2"
+            shift
+            ;;
+        --pr)
+            (($# >= 2)) || { usage; exit 2; }
+            PR_NUMBER="$2"
+            shift
+            ;;
+        --repo)
+            (($# >= 2)) || { usage; exit 2; }
+            REPOSITORY="$2"
+            shift
+            ;;
+        --timeout-seconds)
+            (($# >= 2)) || { usage; exit 2; }
+            TIMEOUT_SECONDS="$2"
+            shift
+            ;;
+        --poll-seconds)
+            (($# >= 2)) || { usage; exit 2; }
+            POLL_SECONDS="$2"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            usage
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+for command in gh git jq; do
+    command -v "$command" >/dev/null 2>&1 || {
+        echo "pr-verify: $command is required" >&2
+        exit 2
+    }
+done
+
+[[ "$TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || { echo "pr-verify: invalid timeout" >&2; exit 2; }
+[[ "$POLL_SECONDS" =~ ^[0-9]+$ ]] || { echo "pr-verify: invalid poll interval" >&2; exit 2; }
+
+resolve_base_ref() {
+    local candidate="$1"
+    if [[ -n "$candidate" ]] && git rev-parse --verify "$candidate" >/dev/null 2>&1; then
+        printf '%s\n' "$candidate"
+        return 0
+    fi
+    if [[ -n "$candidate" ]] && git rev-parse --verify "origin/$candidate" >/dev/null 2>&1; then
+        printf '%s\n' "origin/$candidate"
+        return 0
+    fi
+    return 1
+}
+
+filter_rollup() {
+    jq -c --arg self "$SELF_CHECK_NAME" --arg workflow "$WORKFLOW_NAME" '
+        def norm: tostring | ascii_downcase | gsub("[^a-z0-9]"; "");
+        def check_name: (.name // .context // "");
+        map(select(
+            ((check_name | norm) != ($self | norm)) and
+            (((.workflowName // "") | norm) != ($workflow | norm)) and
+            ((check_name | norm) != (($workflow + " / " + $self) | norm))
+        ))
+    '
+}
+
+rollup_counts() {
+    jq -r '
+        def outcome: ((.conclusion // .state // "") | ascii_upcase);
+        def status: ((.status // "") | ascii_upcase);
+        def pending:
+            (outcome) as $outcome |
+            (status) as $status |
+            ($outcome == "" or
+             $outcome == "PENDING" or
+             $outcome == "QUEUED" or
+             $outcome == "IN_PROGRESS" or
+             $outcome == "EXPECTED" or
+             ($status != "" and $status != "COMPLETED"));
+        def failed:
+            (outcome) as $outcome |
+            ($outcome == "FAILURE" or
+             $outcome == "ERROR" or
+             $outcome == "CANCELLED" or
+             $outcome == "TIMED_OUT" or
+             $outcome == "STARTUP_FAILURE" or
+             $outcome == "ACTION_REQUIRED" or
+             $outcome == "STALE");
+        . as $checks |
+        [
+            ([$checks[] | select(pending)] | length),
+            ([$checks[] | select(failed)] | length),
+            ($checks | length)
+        ] | @tsv
+    '
+}
+
+scope_status="FAIL"
+scope_output=""
+scope_reason="scope-guard did not run"
+if scope_base_ref="$(resolve_base_ref "$BASE_REF")"; then
+    scope_rc=0
+    scope_output="$("$ROOT/tools/scope-guard/scope-guard" "$scope_base_ref" 2>&1)" || scope_rc=$?
+    if [[ "$scope_rc" -eq 0 ]]; then
+        scope_status="PASS"
+        scope_reason="scope-guard passed"
+    else
+        scope_reason="scope-guard failed"
+    fi
+else
+    scope_reason="base ref is unavailable: $BASE_REF"
+fi
+
+metadata_status="PASS"
+metadata_reason="PR metadata loaded"
+pr_data='{}'
+if [[ -z "$REPOSITORY" || -z "$PR_NUMBER" ]]; then
+    metadata_status="FAIL"
+    metadata_reason="repository or PR number is unavailable"
+elif ! pr_data="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json number,title,baseRefName,headRefName,mergeStateStatus,statusCheckRollup 2>/dev/null)"; then
+    metadata_status="FAIL"
+    metadata_reason="GitHub PR metadata could not be read"
+fi
+
+title="$(jq -r '.title // "unavailable"' <<<"$pr_data")"
+base_name="$(jq -r '.baseRefName // "unavailable"' <<<"$pr_data")"
+head_name="$(jq -r '.headRefName // "unavailable"' <<<"$pr_data")"
+merge_state="$(jq -r '.mergeStateStatus // "unavailable"' <<<"$pr_data")"
+
+checks_status="FAIL"
+checks_reason="status checks were not read"
+rollup='[]'
+if [[ "$metadata_status" == "PASS" ]]; then
+    rollup="$(jq -c '.statusCheckRollup // []' <<<"$pr_data")"
+    SECONDS=0
+    while :; do
+        filtered_rollup="$(filter_rollup <<<"$rollup")"
+        IFS=$'\t' read -r pending_count failed_count total_count <<<"$(rollup_counts <<<"$filtered_rollup")"
+
+        if (( failed_count > 0 )); then
+            checks_status="FAIL"
+            checks_reason="$failed_count failed status check(s)"
+            break
+        fi
+        if (( pending_count == 0 )); then
+            checks_status="PASS"
+            checks_reason="$total_count non-self status check(s) completed"
+            break
+        fi
+        if (( SECONDS >= TIMEOUT_SECONDS )); then
+            checks_status="FAIL"
+            checks_reason="$pending_count status check(s) remained pending after ${TIMEOUT_SECONDS}s"
+            break
+        fi
+        if (( POLL_SECONDS > 0 )); then
+            sleep "$POLL_SECONDS"
+        fi
+        if ! rollup="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json statusCheckRollup 2>/dev/null | jq -c '.statusCheckRollup // []')"; then
+            checks_status="FAIL"
+            checks_reason="status checks could not be refreshed"
+            break
+        fi
+    done
+fi
+
+safe_scope_output="$scope_output"
+check_rows="$(filter_rollup <<<"$rollup" | jq -r '.[] | [(.name // .context // "unnamed"), (.status // .state // ""), (.conclusion // .state // "")] | @tsv')"
+
+{
+    printf '%s\n' "$MARKER"
+    printf '%s\n\n' '## PR verification'
+    printf '%s\n' "- PR: #${PR_NUMBER:-unavailable} — $title"
+    printf '%s\n' "- Branch: ${head_name} → ${base_name}"
+    printf '%s\n' "- Merge state: $merge_state"
+    printf '%s\n' "- Scope: $scope_status ($scope_reason)"
+    printf '%s\n' "- Metadata: $metadata_status ($metadata_reason)"
+    printf '%s\n' "- Status checks: $checks_status ($checks_reason)"
+    printf '\n%s\n' '### Scope guard output'
+    printf '%s\n' '<pre>'
+    printf '%s\n' "$safe_scope_output"
+    printf '%s\n' '</pre>'
+    printf '\n%s\n' '### Non-self status checks'
+    if [[ -n "$check_rows" ]]; then
+        while IFS=$'\t' read -r check_name check_status check_conclusion; do
+            [[ -n "$check_name" ]] || continue
+            printf '%s\n' "- $check_name: status ${check_status:-unknown}, conclusion ${check_conclusion:-unknown}"
+        done <<<"$check_rows"
+    else
+        printf '%s\n' '- none visible'
+    fi
+} > "$REPORT_FILE"
+
+cat "$REPORT_FILE"
+
+if [[ "$scope_status" != "PASS" || "$metadata_status" != "PASS" || "$checks_status" != "PASS" ]]; then
+    exit 1
+fi
