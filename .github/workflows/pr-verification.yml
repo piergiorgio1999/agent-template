@@ -37,7 +37,7 @@ jobs:
         run: |
           : > "$PR_VERIFY_REPORT_FILE"
           set +e
-          .github/pr-verification/pr-verify > "$PR_VERIFY_REPORT_FILE"
+          .github/pr-verification/pr-verify
           rc=$?
           set -e
           cat "$PR_VERIFY_REPORT_FILE" >> "$GITHUB_STEP_SUMMARY"
