@@ -39,9 +39,9 @@ acceptance/scripts/run-digest.sh
 acceptance/scripts/run-ci-tests.sh
 ```
 
-`run-scope-guard.sh` is expected to pass all local scope cases. `run-anti-rot.sh` restores all
-temporary fixtures automatically through its trap. `run-digest.sh` performs
-read-only GitHub access for the real repository.
+`run-scope-guard.sh` is expected to pass all local scope cases.
+`run-anti-rot.sh` restores all temporary fixtures automatically through its
+trap. `run-digest.sh` performs read-only GitHub access for the real repository.
 
 ## CI Verification Instructions
 
