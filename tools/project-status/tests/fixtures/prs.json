@@ -1,0 +1,4 @@
+[
+  {"number":10,"title":"Implements issue 2","state":"OPEN","closingIssuesReferences":[{"number":2}],"statusCheckRollup":[{"conclusion":"SUCCESS"}],"mergeStateStatus":"CLEAN"},
+  {"number":11,"title":"Conflicting issue 5","state":"OPEN","closingIssuesReferences":[{"number":5}],"statusCheckRollup":[{"conclusion":"FAILURE"}],"mergeStateStatus":"CONFLICTING"}
+]

@@ -1,18 +1,120 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-DIR="$(cd "$(dirname "$0")" && pwd)"
+FORMAT="md"
+REPO=""
 
-case "${1:-md}" in
-    json)
-        "$DIR/json-format" "$DIR/fixtures/sample.json"
-        ;;
-    md)
-        "$DIR/md-format" "$DIR/fixtures/sample.json"
-        ;;
-    *)
-        echo "Usage:"
-        echo "project-status [md|json]"
+usage() {
+    echo "Usage: project-status [md|json] [--repo OWNER/REPO]" >&2
+}
+
+while (($#)); do
+    case "$1" in
+        md|json) FORMAT="$1" ;;
+        --repo)
+            (($# >= 2)) || { usage; exit 2; }
+            REPO="$2"
+            shift
+            ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage; exit 2 ;;
+    esac
+    shift
+done
+
+command -v gh >/dev/null 2>&1 || { echo "project-status: gh is required" >&2; exit 1; }
+command -v jq >/dev/null 2>&1 || { echo "project-status: jq is required" >&2; exit 1; }
+
+gh_args=()
+if [[ -n "$REPO" ]]; then
+    gh_args+=(--repo "$REPO")
+fi
+
+run_gh() {
+    if [[ -n "${PROJECT_STATUS_MOCK_DIR:-}" ]]; then
+        case "$1" in
+            issues) cat "$PROJECT_STATUS_MOCK_DIR/issues.json" ;;
+            prs) cat "$PROJECT_STATUS_MOCK_DIR/prs.json" ;;
+            repo) printf '%s\n' "${PROJECT_STATUS_MOCK_REPOSITORY:-fixture/repository}" ;;
+        esac
+        return
+    fi
+    case "$1" in
+        issues) gh issue list "${gh_args[@]}" --state all --limit 1000 --json number,title,state,labels,milestone,subIssues,blockedBy,blocking ;;
+        prs) gh pr list "${gh_args[@]}" --state all --limit 1000 --json number,title,state,closingIssuesReferences,statusCheckRollup,mergeStateStatus ;;
+        repo)
+            if [[ -n "$REPO" ]]; then
+                gh repo view "$REPO" --json nameWithOwner --jq '.nameWithOwner'
+            else
+                gh repo view --json nameWithOwner --jq '.nameWithOwner'
+            fi
+            ;;
+    esac
+}
+
+if [[ -n "${PROJECT_STATUS_MOCK_DIR:-}" ]]; then
+    issues_json="$(run_gh issues)"
+    prs_json="$(run_gh prs)"
+else
+    gh_version="$(gh version | head -n 1)"
+    if ! gh pr list "${gh_args[@]}" --state all --limit 1 --json number,closingIssuesReferences >/dev/null 2>&1; then
+        echo "project-status: $gh_version does not support closingIssuesReferences; upgrade gh and retry" >&2
         exit 1
-        ;;
-esac
+    fi
+    prs_json="$(run_gh prs)"
+    if issues_json="$(run_gh issues 2>/dev/null)"; then
+        issue_features=true
+    else
+        issue_features=false
+        issues_json="$(gh issue list "${gh_args[@]}" --state all --limit 1000 --json number,title,state,labels,milestone)"
+    fi
+fi
+
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+printf '%s\n' "$issues_json" >"$tmpdir/issues.json"
+printf '%s\n' "$prs_json" >"$tmpdir/prs.json"
+
+repo="$(run_gh repo)"
+generated_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+digest="$(jq -n \
+    --arg repository "$repo" \
+    --arg generated_at "$generated_at" \
+    --argjson issues "$issues_json" \
+    --argjson prs "$prs_json" \
+    --argjson issue_features "${issue_features:-true}" '
+  def labels: (.labels // []) | map(if type == "object" then .name else . end);
+  def subissues: if (.subIssues | type) == "object" then (.subIssues.nodes // []) else (.subIssues // []) end;
+  def blocked_by: if (.blockedBy | type) == "object" then (.blockedBy.nodes // []) else (.blockedBy // []) end;
+  def priority: (labels | map(select(test("^priority:P[012]$"))) | first // "priority:none");
+  def issue_number: .number;
+  def linked_prs($issue): [$prs[] | select(.state == "OPEN") | select([.closingIssuesReferences[]?.number] | index($issue))];
+  def is_blocked: ((blocked_by | length) > 0) or ((labels | index("status:blocked")) != null);
+  def check_failed: ([.statusCheckRollup[]? | (.conclusion // .state // "") | ascii_upcase | IN("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT")] | any);
+  def attention($pr): ((labels | index("status:attention")) != null) or ($pr.mergeStateStatus == "CONFLICTING") or ($pr.check_failed);
+  def issue_text: ("#" + (.number|tostring) + " " + .title);
+  def milestone_progress:
+    [ $issues[] | select(.milestone != null) | .milestone.title ] | unique | map(. as $m |
+      {title: $m, closed: ([$issues[] | select(.milestone.title == $m and .state == "CLOSED")] | length), total: ([$issues[] | select(.milestone.title == $m)] | length)});
+  def feature_progress:
+    [$issues[] | select((subissues | length) > 0)] | map(. as $feature |
+      {issue: ($feature | issue_text), closed: ([$feature | subissues[] | select(.state == "CLOSED")] | length), total: (($feature | subissues) | length)});
+  ($issues | map(select(.state == "OPEN")) | map({issue: issue_text, prs: linked_prs(.number), blocked: is_blocked, priority: priority, attention: (any($prs[]?; false))})) as $open |
+  ($issues | map(select(.state == "CLOSED") | issue_text)) as $done |
+  ($issues | map(select(.state == "OPEN") | select((linked_prs(.number) | length) > 0) | issue_text)) as $current |
+  ($issues | map(select(.state == "OPEN") | select((linked_prs(.number) | length) == 0) | select(is_blocked) | issue_text)) as $blocked |
+  ($issues | map(select(.state == "OPEN") | select((linked_prs(.number) | length) == 0) | select(is_blocked | not) | select((labels | index("status:attention")) != null) | issue_text)) as $label_attention |
+  ($prs | map(select(.state == "OPEN") | select(any(.closingIssuesReferences[]?; true)) | select(attention(.))) | map("PR #" + (.number|tostring) + " " + .title)) as $pr_attention |
+  ($issues | map(select(.state == "OPEN") | select((linked_prs(.number) | length) == 0) | select(is_blocked | not) | {text: issue_text, priority: priority, number: .number}) | sort_by((if .priority == "priority:P0" then 0 elif .priority == "priority:P1" then 1 elif .priority == "priority:P2" then 2 else 3 end), .number) | map(.text)) as $next |
+  {repository: $repository, generated_at: $generated_at, phase: "V1", progress: {milestones: milestone_progress, features: feature_progress}, current: $current, done: $done, next: $next, blocked: $blocked, attention: (($label_attention + $pr_attention) | unique)}
+  ' )"
+
+if [[ "$FORMAT" == "json" ]]; then
+    jq . <<<"$digest"
+else
+    jq -r '
+      def list_or_none: if length == 0 then "none" else join("\n") end;
+      ["# Project Status", "", "Repository: \(.repository)", "Generated: \(.generated_at)", "Phase: \(.phase)", "", "## Progress", (.progress | tostring), "", "## Current", (.current | list_or_none), "", "## Next", (.next | list_or_none), "", "## Blocked", (.blocked | list_or_none), "", "## Attention", (.attention | list_or_none)] | join("\n")
+    ' <<<"$digest"
+fi
