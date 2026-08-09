@@ -1,0 +1,96 @@
+# V1 Acceptance Verification
+
+Verification baseline: `origin/main` after FASE 3. Local scripts are under
+`acceptance/scripts/`; they do not write to GitHub and use temporary fixture
+repositories where applicable.
+
+| ID | Local executable | Result | Notes |
+|---|---|---|---|
+| ACC-01 | No | NOT RUN | Requires a disposable repository and real bootstrap permissions. See `run-ci-tests.sh`. |
+| ACC-02 | No | NOT RUN | Requires a real Ruleset/PR merge without Code Owner deadlock. |
+| ACC-03 | Yes | PASS | `run-scope-guard.sh`: unclassified file returns failure. |
+| ACC-04 | Yes | PASS | `run-scope-guard.sh`: two functional scopes return failure. |
+| ACC-05 | Yes | PASS | `run-scope-guard.sh`: one functional scope returns success. |
+| ACC-06 | Yes | PASS | `run-scope-guard.sh`: functional scope plus unclassified shared path returns failure. |
+| ACC-07 | Yes | FAIL | Current `scope-guard` does not read PR labels or implement `scope:exception`; expected pass is not possible without a FASE 5 fix. |
+| ACC-08 | Previously verified | PASS* | Digest linking semantics were covered by FASE 2 fixtures; `*` means not rerun in this phase. |
+| ACC-09 | Previously verified | PASS* | Digest blocker semantics and fallback behavior were covered by FASE 2 fixtures. |
+| ACC-10 | Previously verified | PASS* | Digest priority ordering was covered by FASE 2 fixtures. |
+| ACC-11 | Previously verified | PASS* | Digest attention semantics were covered by FASE 2 fixtures. |
+| ACC-12 | No | NOT RUN | Requires CI branches containing the six language manifests. |
+| ACC-13 | No | NOT RUN | Requires real GitHub CI with Swift Package Manager and Xcode variants. |
+| ACC-14 | No | NOT RUN | Requires real CI failure, legitimate skip, and cancellation runs. |
+| ACC-15 | No | NOT RUN | Requires real workflow mutations and blocking actionlint/zizmor checks. |
+| ACC-16 | No | NOT RUN | Requires runtime-only fake secret and real Gitleaks gate. |
+| ACC-17 | Yes | PASS | `run-anti-rot.sh`: invalid scope map and missing DECISIONS.md are rejected. Missing script/stub detection is not implemented by the current checker. |
+| ACC-18 | Yes | PASS | `run-digest.sh`: fixture suite plus real digest; 279 bytes and 20 lines in Markdown output. |
+| ACC-19 | No | NOT RUN | Requires a disposable Copier-generated repository and update operation. |
+| ACC-20 | Previously verified | PASS* | FASE 2 verified the `closingIssuesReferences` capability failure path. |
+| ACC-21 | No | NOT RUN | Requires rerunning bootstrap against an already initialized repository. |
+| ACC-22 | No | NOT RUN | Requires real GitHub Ruleset capability degradation. |
+| ACC-23 | Previously verified | PASS* | FASE 3 PR configured label sync; real post-merge workflow verification remains owner/CI evidence. |
+
+## Local Commands
+
+```bash
+acceptance/scripts/run-scope-guard.sh
+acceptance/scripts/run-anti-rot.sh
+acceptance/scripts/run-digest.sh
+acceptance/scripts/run-ci-tests.sh
+```
+
+`run-scope-guard.sh` intentionally exits non-zero for ACC-07 until the
+scope-exception behavior is implemented. `run-anti-rot.sh` restores all
+temporary fixtures automatically through its trap. `run-digest.sh` performs
+read-only GitHub access for the real repository.
+
+## CI Verification Instructions
+
+Use a disposable branch/repository derived from the current `main` and record
+the commit SHA, workflow URL, expected result, actual result, and cleanup in
+this report. Do not claim a GitHub acceptance case passed from a local mock.
+
+- ACC-01: run bootstrap against a private disposable repository with the
+  required repository permissions; verify labels, Ruleset, CI, branch
+  auto-delete, and Copier metadata.
+- ACC-02: create and merge a PR under the configured single-owner Ruleset;
+  verify that Code Owner self-approval is not required.
+- ACC-12: create separate branches with each supported language manifest and
+  verify only the matching checker runs while other checkers skip.
+- ACC-13: run SwiftPM and Xcode fixture branches; verify the configured Swift
+  path runs and unsupported Xcode configuration skips legitimately.
+- ACC-14: create CI runs with a required failure, legitimate detection skip,
+  and cancellation; verify only success/skipped pass the gate.
+- ACC-15: use temporary workflow mutations for an unpinned action and invalid
+  syntax; verify zizmor/actionlint block the gate, then remove the mutation.
+- ACC-16: create a fake secret only during the runner job; verify Gitleaks
+  fails and confirm no secret is committed.
+- ACC-19: generate a disposable repository with Copier, update the template,
+  and verify infrastructure changes do not overwrite project-specific code.
+- ACC-21: rerun bootstrap in the initialized repository; verify no duplicate
+  or destructive operation occurs.
+- ACC-22: run against a repository/API capability where Ruleset support is
+  unavailable; verify unsupported is a warning/skip while missing required
+  properties fail.
+- ACC-23: after FASE 3 is merged, push a controlled `.github/labels.yml`
+  change to `main`; verify canonical labels synchronize and an extra label is
+  retained.
+
+## Gaps
+
+- `scope-guard` has no input path for PR labels, so ACC-07 cannot currently
+  pass. This is recorded, not implemented, in this phase.
+- `agent-config-check` validates core files and JSON/version consistency but
+  does not detect every missing script or TODO stub listed by ACC-17.
+- CI-only cases still need real GitHub evidence; local fixtures are not a
+  substitute for Ruleset, Actions, Gitleaks, Copier, or workflow behavior.
+
+## Proposals
+
+PROPOSTA: extend `scope-guard` with a deterministic, CI-provided
+`scope:exception` signal / label input and add acceptance coverage for it;
+cost and exact interface should be reviewed in FASE 5 before implementation.
+
+PROPOSTA: expand `agent-config-check` anti-rot assertions to cover required
+script existence and rejection of known TODO stubs; defer until the FASE 5
+audit confirms the canonical file set.
