@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: pr-verification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pr_verification:
     name: pr-verification
@@ -33,6 +37,7 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           REPOSITORY: ${{ github.repository }}
           PR_VERIFY_CHECK_NAME: pr-verification
+          PR_VERIFY_OWN_CHECKS: pr-verification,publish-pr-verification-report
           PR_VERIFY_TIMEOUT_SECONDS: 300
           PR_VERIFY_POLL_SECONDS: 10
           PR_VERIFY_REPORT_FILE: ${{ runner.temp }}/pr-verification-report.md

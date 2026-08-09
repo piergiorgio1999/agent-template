@@ -11,6 +11,7 @@ REPOSITORY="${REPOSITORY:-${GITHUB_REPOSITORY:-}}"
 TIMEOUT_SECONDS="${PR_VERIFY_TIMEOUT_SECONDS:-300}"
 POLL_SECONDS="${PR_VERIFY_POLL_SECONDS:-10}"
 SELF_CHECK_NAME="${PR_VERIFY_CHECK_NAME:-pr-verification}"
+OWN_CHECKS="${PR_VERIFY_OWN_CHECKS:-${SELF_CHECK_NAME},publish-pr-verification-report}"
 WORKFLOW_NAME="${GITHUB_WORKFLOW:-PR Verification}"
 REPORT_FILE="${PR_VERIFY_REPORT_FILE:-${TMPDIR:-/tmp}/pr-verification-report.$$}"
 
@@ -81,11 +82,13 @@ resolve_base_ref() {
 }
 
 filter_rollup() {
-    jq -c --arg self "$SELF_CHECK_NAME" --arg workflow "$WORKFLOW_NAME" '
+    jq -c --arg self "$SELF_CHECK_NAME" --arg own "$OWN_CHECKS" --arg workflow "$WORKFLOW_NAME" '
         def norm: tostring | ascii_downcase | gsub("[^a-z0-9]"; "");
         def check_name: (.name // .context // "");
+        def own_names: ($own | split(",") | map(norm));
+        def is_own: (check_name | norm) as $name | (own_names | index($name)) != null;
         map(select(
-            ((check_name | norm) != ($self | norm)) and
+            (is_own | not) and
             (((.workflowName // "") | norm) != ($workflow | norm)) and
             ((check_name | norm) != (($workflow + " / " + $self) | norm))
         ))
