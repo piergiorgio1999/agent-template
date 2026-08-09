@@ -18,3 +18,24 @@ build) e rendendo reali i job `detect` (rilevamento manifest) e
 Ogni check resta un no-op (exit 0) se il manifest del linguaggio non
 è presente, quindi è sicuro anche su repository generati che non
 usano tutti i linguaggi.
+
+## 2026-08-09 — zizmor advisory temporaneo durante la remediation del debito
+
+L'attivazione di zizmor (decisione precedente) ha reso rosso `main`:
+43 finding preesistenti nei workflow GitHub esistenti (15 high, 10
+medium, 4 low — es. action non pinnate a hash, permessi troppo ampi,
+`persist-credentials` non disattivato), non causati dal lavoro che ha
+attivato il check ma debito preesistente rivelato per la prima volta.
+
+Decisione: portare `main` verde con una modifica minima e temporanea
+allo step `Zizmor` in `.github/workflows/ci.yml` — aggiunta di
+`continue-on-error: true` solo su quello step. zizmor resta attivo e
+visibile nei log (nessun finding viene ignorato, filtrato o
+soppresso); diventa temporaneamente advisory (non blocca il job
+`security` né il gate) fino al completamento della remediation dei 43
+finding preesistenti, tracciata in issue di follow-up. I workflow che
+generano i finding non vengono modificati in questa decisione — la
+remediation è un lavoro separato, a scope singolo (`github`).
+
+Al termine della remediation, rimuovere `continue-on-error: true` dallo
+step `Zizmor` e ripristinare zizmor come blocking.
