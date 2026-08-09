@@ -1,0 +1,12 @@
+_min_copier_version: "9.0.0"
+_subdirectory: template-only
+project_name:
+  type: str
+  default: agent-project
+template_owner:
+  type: str
+  default: OWNER
+default_branch:
+  type: str
+  default: main
+

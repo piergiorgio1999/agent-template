@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+command -v gh >/dev/null || { echo "gh is required" >&2; exit 1; }
+repo=$(gh repo view --json nameWithOwner --jq .nameWithOwner)
+test -n "$repo"
+gh api --method POST "repos/$repo/rulesets" --input .github/ruleset.json.jinja >/dev/null
+echo "ruleset bootstrap requested for $repo"
+

@@ -1,0 +1,140 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  checks: write
+  security-events: write
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  anti-rot:
+    name: anti-rot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: {persist-credentials: false, fetch-depth: 0}
+      - name: Check forbidden state files
+        run: test -z "$(find . -maxdepth 2 -type f \( -name STATUS.md -o -name ROADMAP.md -o -name TASKS.md -o -name PLAN.md -o -name PROJECT_STATE.json \) -print)"
+      - name: Check local links and paths
+        uses: lycheeverse/lychee-action@7da8ec1fc4e01b5a12062ac6c589c10a4ce70d67 # v2.0.0
+        with:
+          args: --offline --no-progress --root-dir . './**/*.md'
+          fail: true
+
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: {persist-credentials: false}
+      - name: Validate workflows
+        run: docker run --rm -v "$PWD:/repo:ro" rhysd/actionlint:1.7.7 -color
+
+  security:
+    name: security
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: {persist-credentials: false, fetch-depth: 0}
+      - name: Gitleaks
+        run: docker run --rm -v "$PWD:/repo:ro" zricethezav/gitleaks:v8.24.2 detect --source=/repo --config=/repo/.gitleaks.toml --no-banner
+      - name: Zizmor
+        uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
+        with:
+          advanced-security: false
+          annotations: true
+          online-audits: false
+      - name: Conditional Trivy
+        if: hashFiles('Dockerfile*', '**/Dockerfile*', '**/*.tf', '**/docker-compose*.yml') != ''
+        run: docker run --rm -v "$PWD:/repo:ro" aquasec/trivy:0.59.1 fs --scanners vuln,misconfig /repo
+
+  paths:
+    name: path detection
+    runs-on: ubuntu-latest
+    outputs:
+      typescript: ${{ steps.filter.outputs.typescript }}
+      python: ${{ steps.filter.outputs.python }}
+      swift: ${{ steps.filter.outputs.swift }}
+      rust: ${{ steps.filter.outputs.rust }}
+      go: ${{ steps.filter.outputs.go }}
+      shell: ${{ steps.filter.outputs.shell }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: {persist-credentials: false, fetch-depth: 0}
+      - id: filter
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
+        with: {filters: .github/filters.yml}
+
+  checks:
+    name: relevant checks
+    needs: paths
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: {persist-credentials: false}
+      - name: TypeScript
+        if: needs.paths.outputs.typescript == 'true'
+        run: npm ci && npx biome check . && npx tsc --noEmit && npx vitest run --reporter=junit --outputFile=reports/junit.xml
+      - name: Python
+        if: needs.paths.outputs.python == 'true'
+        run: python -m pip install ruff pyright pytest && ruff check . && pyright && pytest --junitxml=reports/junit.xml
+      - name: Swift
+        if: needs.paths.outputs.swift == 'true'
+        run: swift-format lint --recursive . && (command -v swiftlint >/dev/null && swiftlint || true) && swift test
+      - name: Rust
+        if: needs.paths.outputs.rust == 'true'
+        run: cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test
+      - name: Go
+        if: needs.paths.outputs.go == 'true'
+        run: test -z "$(gofmt -l .)" && go vet ./... && go test ./...
+      - name: Shell
+        if: needs.paths.outputs.shell == 'true'
+        run: find . -type f \( -name '*.sh' -o -name '*.bash' \) -print0 | xargs -0 -r -n1 shellcheck
+      - name: Test reporter
+        if: always() && hashFiles('reports/**/*.xml') != ''
+        uses: dorny/test-reporter@7b7927aa7da8b82e81e755810cb51f39941a2cc7 # v2.2.0
+        with:
+          name: test results
+          path: reports/**/*.xml
+          reporter: java-junit
+          fail-on-error: true
+
+  scope:
+    name: scope guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: {persist-credentials: false, fetch-depth: 0}
+      - run: ./tools/scope-guard
+
+  config:
+    name: agent config
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with: {persist-credentials: false}
+      - run: ./tools/agent-config-check
+
+  ci-gate:
+    name: CI Gate
+    if: always()
+    needs: [anti-rot, actionlint, security, paths, checks, scope, config]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Accept success or legitimate skip only
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+        run: |
+          case ",$RESULTS," in
+            *,failure,*|*,cancelled,*) exit 1 ;;
+            *,skipped,*)
+              test ",${RESULTS}," = ",success,success,success,success,success,success,success," || exit 1
+              ;;
+            *) exit 0 ;;
+          esac
+

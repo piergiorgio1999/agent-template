@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -euo pipefail
+map=scope-map.json
+test -f "$map"
+files=$(git diff --name-only HEAD^ HEAD 2>/dev/null || git ls-files)
+functional=""
+shared=0
+bad=0
+glob_match() { [[ "$1" == $2 ]]; }
+for file in $files; do
+  found=0
+  while IFS= read -r pattern; do
+    if glob_match "$file" "$pattern"; then shared=1; found=1; break; fi
+  done < <(jq -r '.shared[]?' "$map")
+  (( found )) && continue
+  while IFS= read -r pattern; do
+    if glob_match "$file" "$pattern"; then found=1; break; fi
+  done < <(jq -r '.infra[]?, .docs[]?' "$map")
+  (( found )) && continue
+  scopes_for_file=""
+  while IFS=$'\t' read -r scope pattern; do
+    if glob_match "$file" "$pattern"; then scopes_for_file+="$scope\n"; fi
+  done < <(jq -r '.scopes | to_entries[] | .key as $scope | .value[] | [$scope,.] | @tsv' "$map")
+  if [[ -z "$scopes_for_file" ]]; then
+    echo "unclassified: $file" >&2
+    bad=1
+  else
+    functional+="$scopes_for_file"
+  fi
+done
+(( bad == 0 )) || exit 1
+unique=$(printf '%b' "$functional" | sort -u | sed '/^$/d')
+count=$(printf '%s\n' "$unique" | sed '/^$/d' | wc -l | tr -d ' ')
+if (( shared )) && [[ "${SCOPE_EXCEPTION:-0}" != 1 ]]; then
+  echo "functional + shared changes require scope:exception" >&2
+  exit 1
+fi
+(( count <= 1 )) || { echo "more than one functional scope: $unique" >&2; exit 1; }
+echo "scope guard OK (${count} functional scope(s))"

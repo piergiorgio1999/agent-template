@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+command -v gh >/dev/null || { echo "gh is required" >&2; exit 1; }
+command -v jq >/dev/null || { echo "jq is required" >&2; exit 1; }
+issues=$(gh issue list --state all --limit 200 --json number,title,state,labels,blockedBy,subIssues,subIssuesSummary,closingIssuesReferences)
+prs=$(gh pr list --state open --limit 200 --json number,title,mergeable,mergeStateStatus,statusCheckRollup,closingIssuesReferences)
+json=$(jq -n --argjson issues "$issues" --argjson prs "$prs" '{issues:$issues, pullRequests:$prs, generatedAt:(now|todate)}')
+if [[ "${1:-text}" == "--json" ]]; then
+  printf '%s\n' "$json"
+  exit 0
+fi
+printf '%s\n' "$json" | jq -r '.issues[] | (.labels | map(.name)) as $labels | if .state == "CLOSED" then "DONE #\(.number) \(.title)" elif (($labels | index("status:blocked")) != null or ((.blockedBy // []) | length) > 0) then "BLOCKED #\(.number) \(.title)" elif (($labels | index("status:attention")) != null) then "ATTENTION #\(.number) \(.title)" else "NEXT #\(.number) \(.title)" end' | head -100
+

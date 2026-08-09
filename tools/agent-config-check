@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+test -f AGENTS.md
+test -f DECISIONS.md
+test -f SECURITY.md
+test -f scope-map.json
+jq -e '.version == 1 and (.scopes | type == "object")' scope-map.json >/dev/null
+if rg -n 'uses: [^@]+@(v|main|master|latest)' .github/workflows; then
+  echo "Unpinned GitHub Action detected" >&2
+  exit 1
+fi
+if find . -maxdepth 2 -type f \( -name STATUS.md -o -name ROADMAP.md -o -name TASKS.md -o -name PLAN.md -o -name PROJECT_STATE.json \) | grep -q .; then
+  echo "Forbidden duplicate state file detected" >&2
+  exit 1
+fi
+echo "agent configuration OK"
+

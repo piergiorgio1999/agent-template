@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "shared": [".github/**", "AGENTS.md", "CLAUDE.md", "DECISIONS.md", "SECURITY.md", "scope-map.json", "tools/**"],
+  "infra": [".gitignore", ".gitleaks.toml", "copier.yml", "template-only/**"],
+  "docs": ["README.md", "docs/**"],
+  "scopes": {
+    "core": ["Sources/**", "src/**", "lib/**"],
+    "web": ["app/**", "web/**", "frontend/**"],
+    "tests": ["Tests/**", "test/**", "tests/**"]
+  }
+}

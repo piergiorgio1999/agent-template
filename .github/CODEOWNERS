@@ -1,0 +1,9 @@
+# Replace @OWNER before enabling branch protection.
+/.github/ @OWNER
+/AGENTS.md @OWNER
+/CLAUDE.md @OWNER
+/DECISIONS.md @OWNER
+/SECURITY.md @OWNER
+/scope-map.json @OWNER
+/tools/ @OWNER
+

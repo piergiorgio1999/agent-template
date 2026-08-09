@@ -1,0 +1,26 @@
+name: Bug
+description: Report a reproducible bug
+title: "[Bug] "
+labels: ["type:bug"]
+body:
+  - type: textarea
+    id: goal
+    attributes: {label: Goal}
+    validations: {required: true}
+  - type: textarea
+    id: scope
+    attributes: {label: Scope}
+    validations: {required: true}
+  - type: textarea
+    id: acceptance
+    attributes: {label: Acceptance criteria}
+    validations: {required: true}
+  - type: textarea
+    id: verify
+    attributes: {label: Verify}
+    validations: {required: true}
+  - type: textarea
+    id: decisions
+    attributes: {label: Decision references}
+    validations: {required: true}
+
