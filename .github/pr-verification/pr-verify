@@ -253,14 +253,12 @@ if [[ "$metadata_status" == "PASS" && -n "$head_oid" ]]; then
     SECONDS=0
     while :; do
         filtered_rollup="$(filter_rollup <<<"$rollup")"
+        # shellcheck disable=SC2034
         IFS=$'\t' read -r gate_count gate_pending gate_failed gate_conclusion <<<"$(gate_status <<<"$filtered_rollup")"
+        # shellcheck disable=SC2034
+        IFS=$'\t' read -r pending_count failed_count _ <<<"$(rollup_counts <<<"$filtered_rollup")"
 
-        if (( gate_failed > 0 )); then
-            checks_status="FAIL"
-            checks_reason="$(text ci_gate_failed)"
-            break
-        fi
-        if (( gate_count > 0 && gate_pending == 0 )); then
+        if (( pending_count == 0 && gate_count > 0 )); then
             if [[ "$gate_conclusion" != "SUCCESS" ]]; then
                 checks_status="FAIL"
                 checks_reason="CI Gate completed with conclusion $gate_conclusion"
@@ -268,6 +266,11 @@ if [[ "$metadata_status" == "PASS" && -n "$head_oid" ]]; then
             fi
             checks_status="PASS"
             checks_reason="$(text ci_gate_passed)"
+            break
+        fi
+        if (( pending_count == 0 && gate_failed > 0 )); then
+            checks_status="FAIL"
+            checks_reason="$(text ci_gate_failed)"
             break
         fi
         if (( SECONDS >= TIMEOUT_SECONDS )); then
