@@ -50,8 +50,6 @@ use_shell:
 
 _subdirectory: .
 _exclude:
-  - copier.yaml
-  - copier.yml
   - "~*"
   - "*.py[co]"
   - __pycache__
