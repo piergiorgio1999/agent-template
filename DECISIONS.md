@@ -6,6 +6,14 @@ Le Issue devono referenziare le decisioni.
 
 Non duplicare la rationale nelle Issue.
 
+## 2026-08-10 — Metodo di merge scelto dal Merge Advisor
+
+Gli agenti usano il metodo indicato dal commento aggiornabile di `PR
+Verification` per l'head SHA corrente: squash, rebase oppure merge commit.
+`WAIT` impedisce il merge fino alla risoluzione del blocco. La scelta resta
+diagnostica e non introduce un secondo required check: `CI Gate` rimane
+l'unico check obbligatorio previsto da SPEC-V1.
+
 ## 2026-08-09 — Attivazione anticipata dei checker per linguaggio
 
 I checker in `checks/*/check.sh` erano dichiarati "Dormant" /
