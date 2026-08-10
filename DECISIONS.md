@@ -53,3 +53,11 @@ Dependabot. `zizmor .` risulta pulito (0 finding).
 
 Rimosso `continue-on-error: true` dallo step `Zizmor`: torna blocking
 come da piano di rientro della decisione precedente.
+
+## 2026-08-10 — Metodo di merge scelto dal Merge Advisor
+
+Gli agenti usano il metodo indicato dal commento aggiornabile di `PR
+Verification` per l'head SHA corrente: squash, rebase oppure merge commit.
+`WAIT` impedisce il merge fino alla risoluzione del blocco. La scelta resta
+diagnostica e non introduce un secondo required check: `CI Gate` rimane
+l'unico check obbligatorio previsto da SPEC-V1.
