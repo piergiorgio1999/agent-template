@@ -19,7 +19,7 @@ repositories where applicable.
 | ACC-11 | Yes | PASS | `tools/project-status/test.sh` verifies failed checks, conflicts, and `status:attention` precedence. |
 | ACC-12 | No | NOT RUN | Requires CI branches containing the six language manifests. |
 | ACC-13 | Yes | PASS | Disposable CI runs `31405030012`, `31405763029`, and `31409386680` cover SwiftPM, Xcode skip, and configured Xcode execution. |
-| ACC-14 | No | NOT RUN | Requires real CI failure, legitimate skip, and cancellation runs. |
+| ACC-14 | Yes | PASS | Disposable runs `31406282666`, `31405763029`, and `31405762379` verify failure, legitimate skip, and cancellation gate behavior. |
 | ACC-15 | No | NOT RUN | Requires real workflow mutations and blocking actionlint/zizmor checks. |
 | ACC-16 | No | NOT RUN | Requires runtime-only fake secret and real Gitleaks gate. |
 | ACC-17 | Yes | PASS | `run-anti-rot.sh`: invalid scope map and missing DECISIONS.md are rejected. Missing script/stub detection is not implemented by the current checker. |
