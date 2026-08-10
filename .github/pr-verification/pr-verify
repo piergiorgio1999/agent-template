@@ -201,6 +201,7 @@ if [[ "$metadata_status" == "PASS" ]]; then
         merge_recommendation="WAIT — resolve merge blockers"
         merge_recommendation_reason="mergeable=$mergeable, merge state is $merge_state"
     elif [[ "$merge_state" == "UNSTABLE" ]]; then
+        merge_recommendation="WAIT — resolve merge blockers"
         merge_recommendation_reason="mergeable=MERGEABLE; GitHub reports UNSTABLE, but CI Gate is checked separately"
     elif (( commit_count <= 3 && changed_lines <= 300 && changed_files <= 10 )); then
         merge_recommendation="SQUASH MERGE"
