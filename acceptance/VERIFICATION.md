@@ -33,12 +33,15 @@ repositories where applicable.
 ## Local Commands
 
 ```bash
+acceptance/scripts/run-all.sh
 acceptance/scripts/run-scope-guard.sh
 acceptance/scripts/run-anti-rot.sh
 acceptance/scripts/run-digest.sh
 acceptance/scripts/run-ci-tests.sh
 ```
 
+`run-all.sh` executes all currently automatable local acceptance cases and
+prints the remaining GitHub/disposable-repository cases as `NOT RUN`.
 `run-scope-guard.sh` is expected to pass all local scope cases.
 `run-anti-rot.sh` restores all temporary fixtures automatically through its
 trap. `run-digest.sh` performs read-only GitHub access for the real repository.
