@@ -1,6 +1,6 @@
 # ACC-22
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: Ruleset degradation
 

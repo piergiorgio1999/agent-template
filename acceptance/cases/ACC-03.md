@@ -1,10 +1,10 @@
 # ACC-03
 
-Status: TODO
+Status: PASS
 
 Purpose: Scope: file non classificato
 
 Expected Result: FAIL
 
 Implementation:
-Deferred to coding agent.
+acceptance/scripts/run-scope-guard.sh

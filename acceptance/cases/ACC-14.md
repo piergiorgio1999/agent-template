@@ -1,6 +1,6 @@
 # ACC-14
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: CI Gate
 

@@ -1,6 +1,6 @@
 # ACC-02
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: Single-owner workflow
 

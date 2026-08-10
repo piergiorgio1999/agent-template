@@ -1,10 +1,10 @@
 # ACC-04
 
-Status: TODO
+Status: PASS
 
 Purpose: Scope: due scope funzionali
 
 Expected Result: FAIL
 
 Implementation:
-Deferred to coding agent.
+acceptance/scripts/run-scope-guard.sh

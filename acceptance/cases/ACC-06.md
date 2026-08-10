@@ -1,10 +1,10 @@
 # ACC-06
 
-Status: TODO
+Status: PASS
 
 Purpose: Scope: funzionale+shared senza eccezione
 
 Expected Result: FAIL
 
 Implementation:
-Deferred to coding agent.
+acceptance/scripts/run-scope-guard.sh

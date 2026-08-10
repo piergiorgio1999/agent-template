@@ -13,10 +13,10 @@ repositories where applicable.
 | ACC-05 | Yes | PASS | `run-scope-guard.sh`: one functional scope returns success. |
 | ACC-06 | Yes | PASS | `run-scope-guard.sh`: functional scope plus unclassified shared path returns failure. |
 | ACC-07 | Yes | PASS | `scope-guard` accepts multiple functional scopes when `scope:exception` is present; covered by merged ACC-07 fix. |
-| ACC-08 | Previously verified | PASS* | Digest linking semantics were covered by FASE 2 fixtures; `*` means not rerun in this phase. |
-| ACC-09 | Previously verified | PASS* | Digest blocker semantics and fallback behavior were covered by FASE 2 fixtures. |
-| ACC-10 | Previously verified | PASS* | Digest priority ordering was covered by FASE 2 fixtures. |
-| ACC-11 | Previously verified | PASS* | Digest attention semantics were covered by FASE 2 fixtures. |
+| ACC-08 | No | NOT RUN | Requires the digest fixture suite and current GitHub evidence. |
+| ACC-09 | No | NOT RUN | Requires the digest blocker fixture suite and current GitHub evidence. |
+| ACC-10 | No | NOT RUN | Requires the digest priority fixture suite and current GitHub evidence. |
+| ACC-11 | No | NOT RUN | Requires the digest attention fixture suite and current GitHub evidence. |
 | ACC-12 | No | NOT RUN | Requires CI branches containing the six language manifests. |
 | ACC-13 | No | NOT RUN | Requires real GitHub CI with Swift Package Manager and Xcode variants. |
 | ACC-14 | No | NOT RUN | Requires real CI failure, legitimate skip, and cancellation runs. |
@@ -25,10 +25,10 @@ repositories where applicable.
 | ACC-17 | Yes | PASS | `run-anti-rot.sh`: invalid scope map and missing DECISIONS.md are rejected. Missing script/stub detection is not implemented by the current checker. |
 | ACC-18 | Yes | PASS | `run-digest.sh`: fixture suite plus real digest; 279 bytes and 20 lines in Markdown output. |
 | ACC-19 | No | NOT RUN | Requires a disposable Copier-generated repository and update operation. |
-| ACC-20 | Previously verified | PASS* | FASE 2 verified the `closingIssuesReferences` capability failure path. |
+| ACC-20 | No | NOT RUN | Requires a controlled old-`gh` capability check. |
 | ACC-21 | No | NOT RUN | Requires rerunning bootstrap against an already initialized repository. |
 | ACC-22 | No | NOT RUN | Requires real GitHub Ruleset capability degradation. |
-| ACC-23 | Previously verified | PASS* | FASE 3 PR configured label sync; real post-merge workflow verification remains owner/CI evidence. |
+| ACC-23 | No | NOT RUN | Requires real post-merge label-sync workflow evidence. |
 
 ## Local Commands
 

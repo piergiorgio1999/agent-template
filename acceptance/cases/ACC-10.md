@@ -1,6 +1,6 @@
 # ACC-10
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: Priorità NEXT
 

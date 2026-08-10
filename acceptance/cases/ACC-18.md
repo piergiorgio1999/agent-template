@@ -1,10 +1,10 @@
 # ACC-18
 
-Status: TODO
+Status: PASS
 
 Purpose: Digest
 
 Expected Result: JSON conforme schema; text ≤8KiB AND ≤100 righe; read-only; nessun repo scan
 
 Implementation:
-Deferred to coding agent.
+acceptance/scripts/run-digest.sh

@@ -1,6 +1,6 @@
 # ACC-21
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: Bootstrap re-run
 

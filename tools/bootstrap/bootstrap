@@ -74,6 +74,9 @@ git commit -m "chore: initialize generated repository" >/dev/null
 
 gh repo create "$target_repo" "--$visibility" --source=. --remote=origin --push
 
+gh api "repos/$target_repo" --method PATCH -F delete_branch_on_merge=true >/dev/null \
+    || die "cannot enable delete_branch_on_merge for $target_repo"
+
 permissions="$(gh api "repos/$target_repo" --jq '.permissions')"
 if ! jq -e '.admin == true' >/dev/null <<<"$permissions"; then
     die "authenticated principal lacks repository admin permission required for Ruleset setup"

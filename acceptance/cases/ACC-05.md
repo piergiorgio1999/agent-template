@@ -1,10 +1,10 @@
 # ACC-05
 
-Status: TODO
+Status: PASS
 
 Purpose: Scope: uno scope funzionale
 
 Expected Result: PASS
 
 Implementation:
-Deferred to coding agent.
+acceptance/scripts/run-scope-guard.sh

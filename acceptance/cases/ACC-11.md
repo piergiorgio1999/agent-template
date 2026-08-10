@@ -1,6 +1,6 @@
 # ACC-11
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: Attention
 
