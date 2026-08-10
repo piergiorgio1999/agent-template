@@ -1,7 +1,11 @@
-# MCP integration profile
+# MCP profile placeholder
 
-This project was generated with the `mcp` integration profile.
+This project was generated with the `mcp` profile placeholder.
 
-The profile selects MCP-specific integration points at generation time. The
-shared repository checkers and release gate remain authoritative; an MCP
-orchestrator must invoke them and stop on any non-zero exit status.
+Important: this file does **not** install, start, connect to, or implement an
+MCP server or adapter. Selecting `mcp` only records the intended future
+integration profile at Copier generation time.
+
+The shared repository checkers and release gate remain authoritative. A real
+MCP orchestrator will be added separately and must invoke them, stopping on
+any non-zero exit status.
