@@ -9,6 +9,23 @@
       ]
     },
     {
+      "name": "template",
+      "paths": [
+        ".template/**",
+        "config/**",
+        "schemas/**",
+        "contracts/**",
+        "ci/**",
+        "acceptance/**",
+        "copier.yml",
+        "scope-map.json",
+        "TEMPLATE_VERSION",
+        ".gitleaks.toml",
+        ".gitignore",
+        "template-only/**"
+      ]
+    },
+    {
       "name": "documentation",
       "paths": [
         "*.md",
@@ -58,21 +75,6 @@
       "paths": [
         "template-fixtures/**",
         "tests/fixtures/**"
-      ]
-    },
-    {
-      "name": "template",
-      "paths": [
-        ".template/**",
-        "config/**",
-        "schemas/**",
-        "contracts/**",
-        "ci/**",
-        "acceptance/**",
-        "copier.yml",
-        "scope-map.json",
-        "TEMPLATE_VERSION",
-        ".gitleaks.toml"
       ]
     }
   ]
