@@ -50,4 +50,12 @@ use_shell:
 
 _subdirectory: .
 _exclude:
+  - copier.yaml
+  - copier.yml
+  - "~*"
+  - "*.py[co]"
+  - __pycache__
+  - .git
+  - .DS_Store
+  - .svn
   - "{{ 'mcp/**' if integration_mode != 'mcp' else '__never__' }}"
