@@ -55,6 +55,7 @@ run_case() {
 run_language_path_case() {
     local file="$1" description="$2" dir actual=0
     dir="$(make_repo)"
+    mkdir -p "$(dirname "$dir/$file")"
     printf '%s\n' 'fixture' > "$dir/$file"
     git -C "$dir" add -A
     git -C "$dir" commit -q -m "language path"
@@ -82,6 +83,10 @@ run_language_path_case Cargo.toml "Rust manifest"
 run_language_path_case go.mod "Go manifest"
 run_language_path_case Package.swift "Swift manifest"
 run_language_path_case main.sh "Shell source"
+run_language_path_case Acceptance.xcodeproj/project.pbxproj "Xcode project"
+run_language_path_case Resources/Assets.xcassets/Contents.json "Xcode asset catalog"
+run_language_path_case Config/App.xcconfig "Xcode configuration"
+run_language_path_case App/Info.plist "Xcode property list"
 
 echo "scope guard: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]

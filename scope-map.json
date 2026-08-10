@@ -53,7 +53,17 @@
       "paths": [
         "checks/swift/**",
         "Package.swift",
-        "*.swift"
+        "*.swift",
+        "*.xcodeproj/**",
+        "*.xcworkspace/**",
+        "*.xcconfig",
+        "*.plist",
+        "*.entitlements",
+        "*.xcassets/**",
+        "*.xcdatamodeld/**",
+        "*.storyboard",
+        "*.xib",
+        "*.strings"
       ]
     },
     {
