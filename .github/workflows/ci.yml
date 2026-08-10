@@ -55,6 +55,7 @@ jobs:
     outputs:
       typescript: ${{ steps.detect.outputs.typescript }}
       swift: ${{ steps.detect.outputs.swift }}
+      xcode: ${{ steps.detect.outputs.xcode }}
       python: ${{ steps.detect.outputs.python }}
       rust: ${{ steps.detect.outputs.rust }}
       go: ${{ steps.detect.outputs.go }}
@@ -66,6 +67,8 @@ jobs:
 
       - name: Detect languages
         id: detect
+        env:
+          XCODE_SCHEME: ${{ vars.XCODE_SCHEME }}
         run: |
           detect() {
             local name="$1"; shift
@@ -79,6 +82,11 @@ jobs:
           }
           detect typescript package.json tsconfig.json
           detect swift Package.swift
+          if [[ -n "$XCODE_SCHEME" ]] || find . -type d \( -name '*.xcodeproj' -o -name '*.xcworkspace' \) -print -quit | grep -q .; then
+            echo "xcode=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "xcode=false" >> "$GITHUB_OUTPUT"
+          fi
           detect python pyproject.toml setup.py requirements.txt
           detect rust Cargo.toml
           detect go go.mod
@@ -148,13 +156,30 @@ jobs:
         if: needs.detect.outputs.typescript == 'true'
         run: ./checks/typescript/check.sh
 
-      - name: Setup Swift
-        if: needs.detect.outputs.swift == 'true'
-        uses: swift-actions/setup-swift@7591e4f04c00624cb043783da51a7fd6ee0a6bf6 # v2
+  swift:
+    needs: detect
+    if: needs.detect.outputs.swift == 'true' || needs.detect.outputs.xcode == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Swift check
+      - name: SwiftPM test
         if: needs.detect.outputs.swift == 'true'
         run: ./checks/swift/check.sh
+
+      - name: Xcode test
+        if: needs.detect.outputs.xcode == 'true'
+        env:
+          XCODE_DESTINATION: ${{ vars.XCODE_DESTINATION }}
+          XCODE_PROJECT: ${{ vars.XCODE_PROJECT }}
+          XCODE_SCHEME: ${{ vars.XCODE_SCHEME }}
+          XCODE_WORKSPACE: ${{ vars.XCODE_WORKSPACE }}
+        run: ./checks/swift/xcode-check.sh
 
   security:
     needs: detect
@@ -189,6 +214,7 @@ jobs:
       - scope-guard
       - detect
       - checks
+      - swift
       - security
     runs-on: ubuntu-latest
     steps:

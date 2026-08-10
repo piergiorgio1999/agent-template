@@ -73,3 +73,16 @@ of truth, comandi arbitrari, webhook, servizi remoti o pubblicazione automatica.
 La decisione riallinea la specifica al core MCP approvato e già integrato in
 `main`. Il server MCP è un adapter e non modifica il contratto dei quattro tool
 custom definiti dalla SPEC.
+
+## 2026-08-10 — Esecuzione SwiftPM e Xcode separata su macOS
+
+Il percorso Swift della CI usa un job macOS con timeout di 30 minuti. Un
+package Swift esegue `swift test`. La presenza di un container Xcode attiva il
+controllo Xcode, che produce uno skip esplicito e legittimo se la variabile
+repository `XCODE_SCHEME` non è configurata.
+
+Quando `XCODE_SCHEME` è presente, il checker esegue `xcodebuild test`. Le
+variabili repository opzionali `XCODE_PROJECT`, `XCODE_WORKSPACE` (mutuamente
+esclusive) e `XCODE_DESTINATION` selezionano il container e la destinazione;
+senza container esplicito è ammesso un package Swift. Configurazioni presenti
+ma invalide falliscono chiuso e propagano il fallimento a `CI Gate`.
