@@ -75,3 +75,7 @@ Prima di effettuare il merge, un agente legge il commento aggiornabile di
 
 Un agente non sostituisce questa scelta con una propria preferenza. Il merge
 richiede inoltre `PR Verification` e `CI Gate` verdi sull'head SHA corrente.
+
+Dopo un merge riuscito, l'agente non si ferma a un report di stato: aggiorna
+`main`, rilegge il Project Status Digest e prosegue con il prossimo task
+autorizzato, salvo blocco reale o richiesta esplicita di pausa.
