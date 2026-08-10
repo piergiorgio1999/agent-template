@@ -181,6 +181,7 @@ jobs:
           zizmor .
 
   gate:
+    name: CI Gate
     if: always()
     needs:
       - anti-rot
