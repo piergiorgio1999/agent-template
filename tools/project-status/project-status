@@ -59,12 +59,12 @@ if [[ -n "${PROJECT_STATUS_MOCK_DIR:-}" ]]; then
     prs_json="$(run_gh prs)"
 else
     command -v gh >/dev/null 2>&1 || { echo "project-status: gh is required" >&2; exit 1; }
-    gh_version="$(gh version | head -n 1)"
-    if ! gh_with_repo pr list --state all --limit 1 --json number,closingIssuesReferences >/dev/null 2>&1; then
-        echo "project-status: $gh_version does not support closingIssuesReferences; upgrade gh and retry" >&2
-        exit 1
+    if prs_json="$(run_gh prs 2>/dev/null)"; then
+        :
+    else
+        echo "project-status: closingIssuesReferences unavailable; using PR label fallback" >&2
+        prs_json="$(gh_with_repo pr list --state all --limit 1000 --json number,title,state,labels,statusCheckRollup,mergeStateStatus)"
     fi
-    prs_json="$(run_gh prs)"
     if issues_json="$(run_gh issues 2>/dev/null)"; then
         issue_features=true
     else
