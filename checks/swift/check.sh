@@ -6,7 +6,7 @@ if [[ ! -f Package.swift ]]; then
     exit 0
 fi
 
-swift build
+swift test
 
 if command -v swiftlint >/dev/null 2>&1; then
     swiftlint
