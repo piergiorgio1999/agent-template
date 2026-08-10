@@ -97,6 +97,9 @@
 ./docs/validation/README.md
 ./examples/README.md
 ./mcp/README.md.jinja
+./mcp/package-lock.json
+./mcp/package.json
+./mcp/server.mjs
 ./release/CHECKLIST.md
 ./release/RELEASE_NOTES_TEMPLATE.md
 ./schemas/project-status.schema.json
