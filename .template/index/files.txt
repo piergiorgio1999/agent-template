@@ -7,15 +7,24 @@
 ./.github/PULL_REQUEST_TEMPLATE/pull_request_template.md
 ./.github/copilot-instructions.md
 ./.github/dependabot.yml
+./.github/filters.yml
 ./.github/labels.yml
+./.github/pr-verification/pr-verify
+./.github/pull_request_template.md
 ./.github/ruleset.json.jinja
 ./.github/workflows/checker-selftest.yml
 ./.github/workflows/ci.yml
 ./.github/workflows/label-sync.yml
+./.github/workflows/pr-verification.yml
+./.gitignore
 ./.gitleaks.toml
+./.template/contracts/custom-tools.md
+./.template/index/architecture.txt
 ./.template/index/files.txt
+./.template/manifests/todo.md
 ./.template/template-manifest.json
 ./AGENTS.md
+./AUDIT.md
 ./CHANGELOG.md
 ./CLAUDE.md
 ./CODE_OF_CONDUCT.md
@@ -23,9 +32,11 @@
 ./DECISIONS.md
 ./README.md
 ./SECURITY.md
+./SPEC-V1.md
 ./SUPPORT.md
 ./TEMPLATE_VERSION
 ./acceptance/README.md
+./acceptance/VERIFICATION.md
 ./acceptance/cases/ACC-01.md
 ./acceptance/cases/ACC-02.md
 ./acceptance/cases/ACC-03.md
@@ -53,6 +64,10 @@
 ./acceptance/config.json
 ./acceptance/reports/.gitkeep
 ./acceptance/scripts/run-all.sh
+./acceptance/scripts/run-anti-rot.sh
+./acceptance/scripts/run-ci-tests.sh
+./acceptance/scripts/run-digest.sh
+./acceptance/scripts/run-scope-guard.sh
 ./checks/go/README.md
 ./checks/go/check.sh
 ./checks/python/README.md
@@ -63,8 +78,6 @@
 ./checks/shell/check.sh
 ./checks/swift/README.md
 ./checks/swift/check.sh
-./checks/typescript swift python rust go shell/README.md
-./checks/typescript swift python rust go shell/check.sh
 ./checks/typescript/README.md
 ./checks/typescript/check.sh
 ./ci/contracts/README.md
@@ -94,12 +107,12 @@
 ./template-fixtures/go.mod
 ./template-fixtures/package.json
 ./template-fixtures/pyproject.toml
+./template-only/.keep
 ./tests/fixtures/go/.keep
 ./tests/fixtures/python/.keep
 ./tests/fixtures/rust/.keep
 ./tests/fixtures/shell/.keep
 ./tests/fixtures/swift/.keep
-./tests/fixtures/typescript swift python rust go shell/.keep
 ./tests/fixtures/typescript/.keep
 ./tools/agent-config-check/agent-config-check
 ./tools/bootstrap/README.md
@@ -116,6 +129,10 @@
 ./tools/project-status/md-format
 ./tools/project-status/project-status
 ./tools/project-status/schema/status-schema.json
+./tools/project-status/test.sh
+./tools/project-status/tests/fixtures/issues.json
+./tools/project-status/tests/fixtures/prs.json
 ./tools/scope-guard/scope-guard
+./tools/scope-guard/test.sh
 ./tools/validate/validate-ci.sh
 ./tools/validate/validate.sh

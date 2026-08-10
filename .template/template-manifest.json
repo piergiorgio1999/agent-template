@@ -1,12 +1,13 @@
 {
   "name": "agent-template",
-  "version": "0.1.0-dev",
+  "version": "1.0.0",
   "schemaVersion": 1,
   "bootstrap": "tools/bootstrap/bootstrap.sh",
   "customTools": [
     "project-status",
     "scope-guard",
-    "agent-config-check"
+    "agent-config-check",
+    "bootstrap"
   ],
   "minimumRequirements": {
     "gh": true,
