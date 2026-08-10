@@ -14,6 +14,19 @@ SELF_CHECK_NAME="${PR_VERIFY_CHECK_NAME:-pr-verification}"
 OWN_CHECKS="${PR_VERIFY_OWN_CHECKS:-${SELF_CHECK_NAME},publish-pr-verification-report}"
 WORKFLOW_NAME="${GITHUB_WORKFLOW:-PR Verification}"
 REPORT_FILE="${PR_VERIFY_REPORT_FILE:-${TMPDIR:-/tmp}/pr-verification-report.$$}"
+COMMENT_LANGUAGE="${PR_COMMENT_LANGUAGE:-}"
+
+if [[ -z "$COMMENT_LANGUAGE" && -f "$ROOT/config/template/comment-language" ]]; then
+    COMMENT_LANGUAGE="$(tr -d '[:space:]' < "$ROOT/config/template/comment-language")"
+fi
+COMMENT_LANGUAGE="${COMMENT_LANGUAGE:-it}"
+LOCALE_FILE="$ROOT/config/template/comment-locales/$COMMENT_LANGUAGE.json"
+
+[[ -f "$LOCALE_FILE" ]] || { echo "pr-verify: unsupported comment language: $COMMENT_LANGUAGE" >&2; exit 2; }
+
+text() {
+    jq -er --arg key "$1" '.[$key] // error("missing locale key: " + $key)' "$LOCALE_FILE"
+}
 
 usage() {
     echo "Usage: pr-verify [--base-ref REF] [--pr NUMBER] [--repo OWNER/REPO] [--timeout-seconds N] [--poll-seconds N]" >&2
@@ -163,16 +176,16 @@ if scope_base_ref="$(resolve_base_ref "$BASE_REF")"; then
     scope_output="$("$ROOT/tools/scope-guard/scope-guard" "$scope_base_ref" 2>&1)" || scope_rc=$?
     if [[ "$scope_rc" -eq 0 ]]; then
         scope_status="PASS"
-        scope_reason="scope-guard passed"
+        scope_reason="$(text scope_guard_passed)"
     else
-        scope_reason="scope-guard failed"
+        scope_reason="$(text scope_guard_failed)"
     fi
 else
     scope_reason="base ref is unavailable: $BASE_REF"
 fi
 
 metadata_status="PASS"
-metadata_reason="PR metadata loaded"
+metadata_reason="$(text metadata_loaded)"
 pr_data='{}'
 if [[ -z "$REPOSITORY" || -z "$PR_NUMBER" ]]; then
     metadata_status="FAIL"
@@ -213,19 +226,20 @@ if [[ "$metadata_status" == "PASS" ]]; then
 fi
 
 merge_banner="### 🔴 MERGE RECOMMENDATION: $merge_recommendation"
-merge_action="**DO NOT MERGE YET**"
+merge_banner="### 🔴 $(text merge_recommendation): $merge_recommendation"
+merge_action="**$(text do_not_merge)**"
 case "$merge_recommendation" in
     SQUASH\ MERGE)
-        merge_banner="### 🟢 MERGE RECOMMENDATION: SQUASH MERGE"
-        merge_action="**MERGE IS ADVISED — use Squash and merge**"
+        merge_banner="### 🟢 $(text merge_recommendation): SQUASH MERGE"
+        merge_action="**$(text merge_advised) — use Squash and merge**"
         ;;
     REBASE\ MERGE)
-        merge_banner="### 🟢 MERGE RECOMMENDATION: REBASE MERGE"
-        merge_action="**MERGE IS ADVISED — use Rebase and merge**"
+        merge_banner="### 🟢 $(text merge_recommendation): REBASE MERGE"
+        merge_action="**$(text merge_advised) — use Rebase and merge**"
         ;;
     MERGE\ COMMIT)
-        merge_banner="### 🟢 MERGE RECOMMENDATION: MERGE COMMIT"
-        merge_action="**MERGE IS ADVISED — use Create a merge commit**"
+        merge_banner="### 🟢 $(text merge_recommendation): MERGE COMMIT"
+        merge_action="**$(text merge_advised) — use Create a merge commit**"
         ;;
 esac
 
@@ -243,7 +257,7 @@ if [[ "$metadata_status" == "PASS" && -n "$head_oid" ]]; then
 
         if (( gate_failed > 0 )); then
             checks_status="FAIL"
-            checks_reason="CI Gate failed"
+            checks_reason="$(text ci_gate_failed)"
             break
         fi
         if (( gate_count > 0 && gate_pending == 0 )); then
@@ -253,7 +267,7 @@ if [[ "$metadata_status" == "PASS" && -n "$head_oid" ]]; then
                 break
             fi
             checks_status="PASS"
-            checks_reason="CI Gate passed"
+            checks_reason="$(text ci_gate_passed)"
             break
         fi
         if (( SECONDS >= TIMEOUT_SECONDS )); then
@@ -284,27 +298,27 @@ check_rows="$(filter_rollup <<<"$rollup" | jq -r '.[] | [(.name // .context // "
     printf '%s\n' "$MARKER"
     printf '%s\n\n' "$merge_banner"
     printf '%s\n\n' "$merge_action"
-    printf '%s\n\n' "Reason: ${merge_recommendation_reason:-unavailable}"
-    printf '%s\n\n' '## PR verification'
-    printf '%s\n' "- PR: #${PR_NUMBER:-unavailable} — $title"
-    printf '%s\n' "- Branch: ${head_name} → ${base_name}"
-    printf '%s\n' "- Merge state: $merge_state"
-    printf '%s\n' "- Merge recommendation: $merge_recommendation${merge_recommendation_reason:+ ($merge_recommendation_reason)}"
-    printf '%s\n' "- Scope: $scope_status ($scope_reason)"
-    printf '%s\n' "- Metadata: $metadata_status ($metadata_reason)"
-    printf '%s\n' "- Status checks: $checks_status ($checks_reason)"
-    printf '\n%s\n' '### Scope guard output'
+    printf '%s\n\n' "$(text reason): ${merge_recommendation_reason:-unavailable}"
+    printf '%s\n\n' "## $(text pr_verification)"
+    printf '%s\n' "- $(text pr): #${PR_NUMBER:-unavailable} — $title"
+    printf '%s\n' "- $(text branch): ${head_name} → ${base_name}"
+    printf '%s\n' "- $(text merge_state): $merge_state"
+    printf '%s\n' "- $(text merge_recommendation): $merge_recommendation${merge_recommendation_reason:+ ($merge_recommendation_reason)}"
+    printf '%s\n' "- $(text scope): $scope_status ($scope_reason)"
+    printf '%s\n' "- $(text metadata): $metadata_status ($metadata_reason)"
+    printf '%s\n' "- $(text status_checks): $checks_status ($checks_reason)"
+    printf '\n### %s\n' "$(text scope_guard_output)"
     printf '%s\n' '<pre>'
     printf '%s\n' "$safe_scope_output"
     printf '%s\n' '</pre>'
-    printf '\n%s\n' '### Non-self status checks'
+    printf '\n### %s\n' "$(text non_self_status_checks)"
     if [[ -n "$check_rows" ]]; then
         while IFS=$'\t' read -r check_name check_status check_conclusion; do
             [[ -n "$check_name" ]] || continue
-            printf '%s\n' "- $check_name: status ${check_status:-unknown}, conclusion ${check_conclusion:-unknown}"
+            printf '%s\n' "- $check_name: $(text status) ${check_status:-unknown}, $(text conclusion) ${check_conclusion:-unknown}"
         done <<<"$check_rows"
     else
-        printf '%s\n' '- none visible'
+        printf '%s\n' "- $(text none_visible)"
     fi
 } > "$REPORT_FILE"
 

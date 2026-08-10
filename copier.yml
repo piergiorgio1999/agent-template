@@ -6,6 +6,13 @@ project_name:
 github_owner:
   type: str
 
+comment_language:
+  type: str
+  choices:
+    Italiano: it
+    English: en
+  default: it
+
 single_owner:
   type: bool
   default: true

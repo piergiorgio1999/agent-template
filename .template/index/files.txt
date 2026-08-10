@@ -83,6 +83,9 @@
 ./config/github/features.json
 ./config/languages/checkers.json
 ./config/security/security-stack.json
+./config/template/comment-language.jinja
+./config/template/comment-locales/en.json
+./config/template/comment-locales/it.json
 ./config/template/project-status.json
 ./config/template/version.json
 ./contracts/README.md
