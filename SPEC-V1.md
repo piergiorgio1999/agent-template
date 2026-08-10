@@ -1,4 +1,4 @@
-# SPEC-V1 — Agent-Ready Template (CONGELATA)
+# SPEC-V1.1 — Agent-Ready Template (CONGELATA)
 
 Questo file è IL CONTRATTO vincolante.
 In caso di divergenza con qualsiasi altro file del repo (docs, config/,
@@ -7,9 +7,9 @@ Non modificare senza approvazione esplicita dell'architetto.
 
 ## 1. VINCOLI ASSOLUTI
 1. GitHub = unica source of truth persistente
-2. reservation MCP = coordinamento live agenti (fuori dalla template; solo istruzioni in AGENTS.md)
+2. Profilo MCP opzionale = adapter locale stdio selezionato da Copier; `standalone` resta il default. Nessun servizio remoto, webhook o pubblicazione automatica.
 3. Project Status Digest = funzione read-only derivata; MAI committato, MAI editabile, MAI source of truth
-4. Runtime tool custom = Bash + jq + gh. VIETATI: yq, PyYAML, parser YAML custom, Python per parsing
+4. Runtime tool custom = Bash + jq + gh. Il solo adapter MCP opzionale usa Node.js e l'SDK MCP ufficiale pinnato. VIETATI: yq, PyYAML, parser YAML custom, Python per parsing
 5. scope-map.json = UNICA fonte classificazione path; overlap: first-match-wins (ordine chiavi); OGNI file classificato (nessun unclassified)
 6. dorny/paths-filter = SOLO changed-files detection e language/checker activation; NON duplica la scope map; niente YAML intermedi
 7. Gitleaks = CI scanner segreti universale; .gitleaks.toml esclude template-fixtures/**; scanning nativo = strato opzionale; secret di test = runtime-only, MAI committati
@@ -29,6 +29,7 @@ NON implementare: Projects v2, Harden Runner, CodeQL obbligatorio, commit signin
 README AGENTS CLAUDE DECISIONS SECURITY | copier.yml scope-map.json |
 .github/(CODEOWNERS dependabot.yml labels.yml pull_request_template.md ruleset.json ISSUE_TEMPLATE/ workflows/) |
 tools/(scope-guard agent-config-check project-status bootstrap) | checks/ | template-fixtures/
+Profilo MCP opzionale: mcp/(server.mjs package.json package-lock.json README.md).
 
 NOTA AUDIT: le directory extra ereditate (config/, schemas/, scripts/, .template/, release/, tools/validate/) NON vanno cancellate ora. Audit DOPO che ACC-01..23 sono verdi; rimuovere/consolidare solo ciò che resta inutilizzato.
 
@@ -38,6 +39,10 @@ istruzioni agenti→AGENTS.md | decisioni→DECISIONS.md | task→Issues | scomp
 ## 6. TOOL CUSTOM (esattamente 4)
 scope-guard | agent-config-check | project-status (digestor REALE: gh --json, feature detection con fallback label, read-only) | bootstrap
 
+L'adapter MCP non introduce un quinto tool autorevole: espone esclusivamente i
+quattro tool/checker esistenti e gli orchestratori di preflight/release, senza
+comandi arbitrari e con propagazione fail-closed degli exit status.
+
 ## 7. SEMANTICA DIGEST
 DONE=closed | IN PROGRESS=open+PR open collegata | BLOCKED=blockedBy OR status:blocked | NEXT=open senza PR non blocked, ordine P0→P1→P2→none poi issue number | ATTENTION=check fallito OR conflitto OR status:attention | Progress=milestone closed/total; feature=sub-issues closed/total. Cache eventuale .cache/ gitignorata, non autorevole.
 
@@ -45,6 +50,7 @@ DONE=closed | IN PROGRESS=open+PR open collegata | BLOCKED=blockedBy OR status:b
 Labels canoniche (.github/labels.yml): priority:P0/P1/P2, status:blocked, status:attention, type:feature/bug/task, scope:exception. VIETATE status:done/in-progress.
 label-sync: action OSS pinnata SHA; sincronizza canoniche; NON elimina extra.
 Dependabot: core, weekly grouped, ecosistemi solo se presenti.
+Copier: `integration_mode=standalone|mcp`; default `standalone`; nessuna autodetection runtime.
 Linking Issue↔PR: solo closing keyword nativa.
 Issue Forms: Goal/Scope/Acceptance/Verify/Decision references.
 PR template: Linked Issue/Primary Scope/Cross-scope/Justification/Verification.
@@ -57,7 +63,7 @@ Timeout: Linux static 10m, Linux test/build 20m, macOS Swift 30m, self-test 30m.
 GITHUB_TOKEN default contents:read; elevazioni solo per-job.
 
 ## 10. ACCEPTANCE
-ACC-01..23 = contratto eseguibile. acceptance/cases/ è la trascrizione eseguibile di questa SPEC, compilata SOLO da questa SPEC, commitata CONTESTUALMENTE a questo file. In caso di divergenza, SPEC-V1.md prevale.
+ACC-01..23 = contratto eseguibile. ACC-19 verifica anche che Copier escluda i file MCP in modalità `standalone` e li includa in modalità `mcp`. acceptance/cases/ è la trascrizione eseguibile di questa SPEC, compilata SOLO da questa SPEC, commitata CONTESTUALMENTE a questo file. In caso di divergenza, SPEC-V1.md prevale.
 
 ## 11. REGOLE AGENTI
 Leggi SPEC-V1.md prima di ogni modifica | non reimplementare esistente | no custom framework | tool prima della CI | test locali prima dell'integrazione | Bash set -euo pipefail ShellCheck-clean | YAML actionlint-clean | JSON jq-validabile | non conforme→STOP e segnala.

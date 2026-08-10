@@ -2,9 +2,13 @@
 
 Status: NOT RUN
 
-Purpose: Copier update
+Purpose: Copier update and integration profiles
 
-Expected Result: infrastruttura aggiornata, codice project-specific intatto
+Expected Result: infrastruttura aggiornata e codice project-specific intatto;
+`standalone` non genera `mcp/`, mentre `mcp` genera il server locale, il
+manifest e il lockfile MCP.
 
 Implementation:
-Deferred to coding agent.
+Generate disposable projects for both `integration_mode` values, assert the
+expected paths and saved answer, then run `copier update` after adding a
+project-specific file.
