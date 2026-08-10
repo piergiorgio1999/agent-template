@@ -1,6 +1,6 @@
 # ACC-20
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: gh version
 

@@ -1,6 +1,6 @@
 # ACC-15
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: Actions security
 

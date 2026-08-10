@@ -1,10 +1,10 @@
 # ACC-07
 
-Status: TODO
+Status: PASS
 
 Purpose: Scope: funzionale+shared con scope:exception
 
 Expected Result: PASS
 
 Implementation:
-Deferred to coding agent.
+acceptance/scripts/run-scope-guard.sh

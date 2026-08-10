@@ -1,6 +1,6 @@
 # ACC-23
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: Label sync
 

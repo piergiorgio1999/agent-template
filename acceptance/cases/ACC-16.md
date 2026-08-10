@@ -1,6 +1,6 @@
 # ACC-16
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: Secrets runtime
 

@@ -1,6 +1,6 @@
 # ACC-12
 
-Status: TODO
+Status: NOT RUN
 
 Purpose: Language detection
 
