@@ -13,6 +13,13 @@ comment_language:
     English: en
   default: it
 
+integration_mode:
+  type: str
+  choices:
+    Standalone: standalone
+    MCP: mcp
+  default: standalone
+
 single_owner:
   type: bool
   default: true
@@ -42,3 +49,5 @@ use_shell:
   default: true
 
 _subdirectory: .
+_exclude:
+  - "{% if integration_mode != 'mcp' %}mcp/**{% else %}__never__{% endif %}"

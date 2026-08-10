@@ -23,7 +23,8 @@
         "TEMPLATE_VERSION",
         ".gitleaks.toml",
         ".gitignore",
-        "template-only/**"
+        "template-only/**",
+        "mcp/**"
       ]
     },
     {
