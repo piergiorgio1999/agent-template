@@ -86,3 +86,11 @@ variabili repository opzionali `XCODE_PROJECT`, `XCODE_WORKSPACE` (mutuamente
 esclusive) e `XCODE_DESTINATION` selezionano il container e la destinazione;
 senza container esplicito è ammesso un package Swift. Configurazioni presenti
 ma invalide falliscono chiuso e propagano il fallimento a `CI Gate`.
+
+## 2026-08-10 — Ruleset non disponibile: fail-closed
+
+Il bootstrap non degrada silenziosamente quando l'API Ruleset non è
+disponibile per il repository/account. Un errore di capability o permesso
+termina il bootstrap; non vengono emessi warning+skip e non si prosegue come
+se la protezione fosse stata applicata. Questo preserva il contratto di
+protezione del branch anche su GitHub Free privato.
