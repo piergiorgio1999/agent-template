@@ -229,7 +229,7 @@ jobs:
   pr_verification:
     name: pr-verification
     needs: gate
-    if: github.event_name == 'pull_request'
+    if: always() && github.event_name == 'pull_request' && needs.gate.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
