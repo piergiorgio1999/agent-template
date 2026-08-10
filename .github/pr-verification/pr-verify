@@ -177,7 +177,7 @@ pr_data='{}'
 if [[ -z "$REPOSITORY" || -z "$PR_NUMBER" ]]; then
     metadata_status="FAIL"
     metadata_reason="repository or PR number is unavailable"
-elif ! pr_data="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json number,title,baseRefName,headRefName,headRefOid,mergeStateStatus,commits,additions,deletions,changedFiles 2>/dev/null)"; then
+elif ! pr_data="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json number,title,baseRefName,headRefName,headRefOid,mergeStateStatus,mergeable,commits,additions,deletions,changedFiles 2>/dev/null)"; then
     metadata_status="FAIL"
     metadata_reason="GitHub PR metadata could not be read"
 fi
@@ -186,6 +186,7 @@ title="$(jq -r '.title // "unavailable"' <<<"$pr_data")"
 base_name="$(jq -r '.baseRefName // "unavailable"' <<<"$pr_data")"
 head_name="$(jq -r '.headRefName // "unavailable"' <<<"$pr_data")"
 merge_state="$(jq -r '.mergeStateStatus // "unavailable"' <<<"$pr_data")"
+mergeable="$(jq -r '.mergeable // "unknown"' <<<"$pr_data")"
 head_oid="$(jq -r '.headRefOid // empty' <<<"$pr_data")"
 
 merge_recommendation="WAIT — PR metadata unavailable"
@@ -196,9 +197,11 @@ if [[ "$metadata_status" == "PASS" ]]; then
     deletions="$(jq -r '.deletions // 0' <<<"$pr_data")"
     changed_files="$(jq -r '.changedFiles // 0' <<<"$pr_data")"
     changed_lines=$((additions + deletions))
-    if [[ "$merge_state" != "CLEAN" ]]; then
+    if [[ "$mergeable" != "MERGEABLE" || "$merge_state" == "CONFLICTING" || "$merge_state" == "DIRTY" || "$merge_state" == "BLOCKED" || "$merge_state" == "BEHIND" ]]; then
         merge_recommendation="WAIT — resolve merge blockers"
-        merge_recommendation_reason="merge state is $merge_state"
+        merge_recommendation_reason="mergeable=$mergeable, merge state is $merge_state"
+    elif [[ "$merge_state" == "UNSTABLE" ]]; then
+        merge_recommendation_reason="mergeable=MERGEABLE; GitHub reports UNSTABLE, but CI Gate is checked separately"
     elif (( commit_count <= 3 && changed_lines <= 300 && changed_files <= 10 )); then
         merge_recommendation="SQUASH MERGE"
         merge_recommendation_reason="$commit_count commit(s), $changed_lines changed line(s), $changed_files file(s): atomic change"
