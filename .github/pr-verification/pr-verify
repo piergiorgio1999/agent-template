@@ -192,7 +192,7 @@ head_oid="$(jq -r '.headRefOid // empty' <<<"$pr_data")"
 merge_recommendation="WAIT — PR metadata unavailable"
 merge_recommendation_reason=""
 if [[ "$metadata_status" == "PASS" ]]; then
-    commit_count="$(jq -r '.commits // 0' <<<"$pr_data")"
+    commit_count="$(jq -r '(.commits // []) | length' <<<"$pr_data")"
     additions="$(jq -r '.additions // 0' <<<"$pr_data")"
     deletions="$(jq -r '.deletions // 0' <<<"$pr_data")"
     changed_files="$(jq -r '.changedFiles // 0' <<<"$pr_data")"
