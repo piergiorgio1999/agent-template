@@ -171,6 +171,23 @@ else
     scope_reason="base ref is unavailable: $BASE_REF"
 fi
 
+merge_banner="### 🔴 MERGE RECOMMENDATION: $merge_recommendation"
+merge_action="**DO NOT MERGE YET**"
+case "$merge_recommendation" in
+    SQUASH\ MERGE)
+        merge_banner="### 🟢 MERGE RECOMMENDATION: SQUASH MERGE"
+        merge_action="**MERGE IS ADVISED — use Squash and merge**"
+        ;;
+    REBASE\ MERGE)
+        merge_banner="### 🟢 MERGE RECOMMENDATION: REBASE MERGE"
+        merge_action="**MERGE IS ADVISED — use Rebase and merge**"
+        ;;
+    MERGE\ COMMIT)
+        merge_banner="### 🟢 MERGE RECOMMENDATION: MERGE COMMIT"
+        merge_action="**MERGE IS ADVISED — use Create a merge commit**"
+        ;;
+esac
+
 metadata_status="PASS"
 metadata_reason="PR metadata loaded"
 pr_data='{}'
@@ -264,6 +281,9 @@ check_rows="$(filter_rollup <<<"$rollup" | jq -r '.[] | [(.name // .context // "
 
 {
     printf '%s\n' "$MARKER"
+    printf '%s\n\n' "$merge_banner"
+    printf '%s\n\n' "$merge_action"
+    printf '%s\n\n' "Reason: ${merge_recommendation_reason:-unavailable}"
     printf '%s\n\n' '## PR verification'
     printf '%s\n' "- PR: #${PR_NUMBER:-unavailable} — $title"
     printf '%s\n' "- Branch: ${head_name} → ${base_name}"
