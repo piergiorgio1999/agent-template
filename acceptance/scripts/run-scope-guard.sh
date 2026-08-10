@@ -52,11 +52,36 @@ run_case() {
     rm -rf "$dir"
 }
 
+run_language_path_case() {
+    local file="$1" description="$2" dir actual=0
+    dir="$(make_repo)"
+    printf '%s\n' 'fixture' > "$dir/$file"
+    git -C "$dir" add -A
+    git -C "$dir" commit -q -m "language path"
+    (cd "$dir" && ./tools/scope-guard/scope-guard main) >"$dir/output" 2>&1 || actual=$?
+    if [[ "$actual" == 0 ]]; then
+        echo "PASS language scope: $description"
+        pass=$((pass + 1))
+    else
+        echo "FAIL language scope: $description"
+        cat "$dir/output"
+        fail=$((fail + 1))
+    fi
+    rm -rf "$dir"
+}
+
 run_case ACC-03 1 "unclassified file fails"
 run_case ACC-04 1 "two functional scopes fail"
 run_case ACC-05 0 "one functional scope passes"
 run_case ACC-06 1 "shared without exception fails"
 run_case ACC-07 0 "two functional scopes with scope:exception pass"
+
+run_language_path_case package.json "TypeScript manifest"
+run_language_path_case pyproject.toml "Python manifest"
+run_language_path_case Cargo.toml "Rust manifest"
+run_language_path_case go.mod "Go manifest"
+run_language_path_case Package.swift "Swift manifest"
+run_language_path_case main.sh "Shell source"
 
 echo "scope guard: $pass passed, $fail failed"
 [[ "$fail" -eq 0 ]]
