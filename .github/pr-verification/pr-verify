@@ -87,11 +87,33 @@ filter_rollup() {
         def check_name: (.name // .context // "");
         def own_names: ($own | split(",") | map(norm));
         def is_own: (check_name | norm) as $name | (own_names | index($name)) != null;
+        def freshness: (.updatedAt // .completedAt // .startedAt // .id // 0);
+        def latest_by_name: sort_by((check_name | norm), freshness) | group_by(check_name | norm) | map(last);
         map(select(
             (is_own | not) and
             (((.workflowName // "") | norm) != ($workflow | norm)) and
             ((check_name | norm) != (($workflow + " / " + $self) | norm))
-        ))
+        )) | latest_by_name
+    '
+}
+
+gate_status() {
+    jq -r '
+        def norm: tostring | ascii_downcase | gsub("[^a-z0-9]"; "");
+        def check_name: (.name // .context // "") | norm;
+        def outcome: ((.conclusion // .state // "") | ascii_upcase);
+        def status: ((.status // "") | ascii_upcase);
+        [ .[] | select((check_name == "cigate") or (check_name == "gate")) ] |
+        if length == 0 then
+            [0, 0, 0, ""]
+        else
+            .[0] as $gate |
+            ($gate | outcome) as $outcome |
+            ($gate | status) as $status |
+            (if ($outcome == "" or $outcome == "PENDING" or $outcome == "QUEUED" or $outcome == "IN_PROGRESS" or ($status != "" and $status != "COMPLETED")) then 1 else 0 end) as $pending |
+            (if ($outcome == "FAILURE" or $outcome == "ERROR" or $outcome == "CANCELLED" or $outcome == "TIMED_OUT" or $outcome == "STARTUP_FAILURE" or $outcome == "ACTION_REQUIRED" or $outcome == "STALE") then 1 else 0 end) as $failed |
+            [1, $pending, $failed, $outcome]
+        end | @tsv
     '
 }
 
@@ -128,8 +150,8 @@ rollup_counts() {
 
 fetch_rollup() {
     local check_runs statuses
-    check_runs="$(gh api --paginate "repos/$REPOSITORY/commits/$head_oid/check-runs?per_page=100" | jq -s '[.[].check_runs[]? | {name: .name, status: .status, conclusion: .conclusion, workflowName: (.app.name // "")}]')" || return 1
-    statuses="$(gh api --paginate "repos/$REPOSITORY/commits/$head_oid/statuses?per_page=100" | jq -s '[.[][]? | {name: .context, status: "COMPLETED", conclusion: .state, workflowName: ""}]')" || return 1
+    check_runs="$(gh api --paginate "repos/$REPOSITORY/commits/$head_oid/check-runs?per_page=100" | jq -s '[.[].check_runs[]? | {id: .id, name: .name, status: .status, conclusion: .conclusion, startedAt: .started_at, completedAt: .completed_at, updatedAt: .completed_at, workflowName: (.app.name // "")}]')" || return 1
+    statuses="$(gh api --paginate "repos/$REPOSITORY/commits/$head_oid/statuses?per_page=100" | jq -s '[.[][]? | {id: .id, name: .context, status: "COMPLETED", conclusion: .state, startedAt: .created_at, completedAt: .updated_at, updatedAt: .updated_at, workflowName: ""}]')" || return 1
     jq -n --argjson check_runs "$check_runs" --argjson statuses "$statuses" '$check_runs + $statuses'
 }
 
@@ -176,21 +198,30 @@ if [[ "$metadata_status" == "PASS" && -n "$head_oid" ]]; then
     SECONDS=0
     while :; do
         filtered_rollup="$(filter_rollup <<<"$rollup")"
-        IFS=$'\t' read -r pending_count failed_count total_count <<<"$(rollup_counts <<<"$filtered_rollup")"
+        IFS=$'\t' read -r gate_count gate_pending gate_failed gate_conclusion <<<"$(gate_status <<<"$filtered_rollup")"
 
-        if (( failed_count > 0 )); then
+        if (( gate_failed > 0 )); then
             checks_status="FAIL"
-            checks_reason="$failed_count failed status check(s)"
+            checks_reason="CI Gate failed"
             break
         fi
-        if (( pending_count == 0 )); then
+        if (( gate_count > 0 && gate_pending == 0 )); then
+            if [[ "$gate_conclusion" != "SUCCESS" ]]; then
+                checks_status="FAIL"
+                checks_reason="CI Gate completed with conclusion $gate_conclusion"
+                break
+            fi
             checks_status="PASS"
-            checks_reason="$total_count non-self status check(s) completed"
+            checks_reason="CI Gate passed"
             break
         fi
         if (( SECONDS >= TIMEOUT_SECONDS )); then
             checks_status="FAIL"
-            checks_reason="$pending_count status check(s) remained pending after ${TIMEOUT_SECONDS}s"
+            if (( gate_count == 0 )); then
+                checks_reason="required check CI Gate missing after ${TIMEOUT_SECONDS}s"
+            else
+                checks_reason="required check CI Gate pending after ${TIMEOUT_SECONDS}s"
+            fi
             break
         fi
         if (( POLL_SECONDS > 0 )); then
