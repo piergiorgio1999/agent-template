@@ -61,3 +61,15 @@ Verification` per l'head SHA corrente: squash, rebase oppure merge commit.
 `WAIT` impedisce il merge fino alla risoluzione del blocco. La scelta resta
 diagnostica e non introduce un secondo required check: `CI Gate` rimane
 l'unico check obbligatorio previsto da SPEC-V1.
+
+## 2026-08-10 — Profilo MCP opzionale incluso nella V1.1
+
+La V1.1 include un profilo Copier opzionale `mcp`, mentre `standalone` resta il
+default. La scelta avviene alla generazione, senza autodetection runtime. Il
+profilo MCP usa un server locale stdio e può soltanto esporre i checker e gli
+orchestratori deterministici già autorevoli; non introduce una seconda source
+of truth, comandi arbitrari, webhook, servizi remoti o pubblicazione automatica.
+
+La decisione riallinea la specifica al core MCP approvato e già integrato in
+`main`. Il server MCP è un adapter e non modifica il contratto dei quattro tool
+custom definiti dalla SPEC.

@@ -1,4 +1,4 @@
-# V1 Acceptance Verification
+# V1.1 Acceptance Verification
 
 Verification baseline: `origin/main` after V1 release. Local scripts are under
 `acceptance/scripts/`; they do not write to GitHub and use temporary fixture
@@ -24,7 +24,7 @@ repositories where applicable.
 | ACC-16 | No | NOT RUN | Requires runtime-only fake secret and real Gitleaks gate. |
 | ACC-17 | Yes | PASS | `run-anti-rot.sh`: invalid scope map and missing DECISIONS.md are rejected. Missing script/stub detection is not implemented by the current checker. |
 | ACC-18 | Yes | PASS | `run-digest.sh`: fixture suite plus real digest; 279 bytes and 20 lines in Markdown output. |
-| ACC-19 | No | NOT RUN | Requires a disposable Copier-generated repository and update operation. |
+| ACC-19 | No | NOT RUN | Requires disposable standalone and MCP Copier generations plus an update operation. |
 | ACC-20 | No | NOT RUN | Requires a controlled old-`gh` capability check. |
 | ACC-21 | No | NOT RUN | Requires rerunning bootstrap against an already initialized repository. |
 | ACC-22 | No | NOT RUN | Requires real GitHub Ruleset capability degradation. |
@@ -67,8 +67,9 @@ this report. Do not claim a GitHub acceptance case passed from a local mock.
   syntax; verify zizmor/actionlint block the gate, then remove the mutation.
 - ACC-16: create a fake secret only during the runner job; verify Gitleaks
   fails and confirm no secret is committed.
-- ACC-19: generate a disposable repository with Copier, update the template,
-  and verify infrastructure changes do not overwrite project-specific code.
+- ACC-19: generate disposable standalone and MCP repositories with Copier;
+  verify MCP files are absent/present respectively, update the template, and
+  verify infrastructure changes do not overwrite project-specific code.
 - ACC-21: rerun bootstrap in the initialized repository; verify no duplicate
   or destructive operation occurs.
 - ACC-22: run against a repository/API capability where Ruleset support is

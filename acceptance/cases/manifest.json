@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "suite": "template-v1",
+  "suite": "template-v1.1",
   "cases": [
     "ACC-01",
     "ACC-02",
