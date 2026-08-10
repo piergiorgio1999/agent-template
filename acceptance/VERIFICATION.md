@@ -24,7 +24,7 @@ repositories where applicable.
 | ACC-16 | No | NOT RUN | Requires runtime-only fake secret and real Gitleaks gate. |
 | ACC-17 | Yes | PASS | `run-anti-rot.sh`: invalid scope map and missing DECISIONS.md are rejected. Missing script/stub detection is not implemented by the current checker. |
 | ACC-18 | Yes | PASS | `run-digest.sh`: fixture suite plus real digest; 279 bytes and 20 lines in Markdown output. |
-| ACC-19 | No | NOT RUN | Requires disposable standalone and MCP Copier generations plus an update operation. |
+| ACC-19 | Yes | PASS | Copier 9.17.1 with `--vcs-ref=HEAD` generated standalone without MCP files and MCP with server, package files, and rendered integration mode. |
 | ACC-20 | No | NOT RUN | Requires a controlled old-`gh` capability check. |
 | ACC-21 | Yes | PASS | Bootstrap rerun against the initialized disposable repository refused safely because `.git` already existed. |
 | ACC-22 | No | NOT RUN | Requires real GitHub Ruleset capability degradation. |
