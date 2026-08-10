@@ -28,7 +28,7 @@ repositories where applicable.
 | ACC-20 | No | NOT RUN | Requires a controlled old-`gh` capability check. |
 | ACC-21 | Yes | PASS | Bootstrap rerun against the initialized disposable repository refused safely because `.git` already existed. |
 | ACC-22 | No | NOT RUN | Requires real GitHub Ruleset capability degradation. |
-| ACC-23 | No | NOT RUN | Requires real post-merge label-sync workflow evidence. |
+| ACC-23 | Yes | PASS | Disposable PR #11 merged with squash; CI run `31430060761` passed, post-merge `label-sync` run `31430296006` passed, and canonical labels plus `acceptance:extra` were present. |
 
 ## Local Commands
 
