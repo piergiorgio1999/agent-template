@@ -86,6 +86,7 @@
 ./config/template/comment-language.jinja
 ./config/template/comment-locales/en.json
 ./config/template/comment-locales/it.json
+./config/template/integration-mode.json.jinja
 ./config/template/project-status.json
 ./config/template/version.json
 ./contracts/README.md
@@ -96,6 +97,7 @@
 ./docs/release/README.md
 ./docs/validation/README.md
 ./examples/README.md
+./mcp/README.md.jinja
 ./release/CHECKLIST.md
 ./release/RELEASE_NOTES_TEMPLATE.md
 ./schemas/project-status.schema.json
