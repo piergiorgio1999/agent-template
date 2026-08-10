@@ -79,3 +79,7 @@ richiede inoltre `PR Verification` e `CI Gate` verdi sull'head SHA corrente.
 Dopo un merge riuscito, l'agente non si ferma a un report di stato: aggiorna
 `main`, rilegge il Project Status Digest e prosegue con il prossimo task
 autorizzato, salvo blocco reale o richiesta esplicita di pausa.
+
+Quando l'agente si ferma, deve dichiarare esplicitamente il motivo e indicare
+che cosa serve all'utente, distinguendo tra azione richiesta, decisione
+richiesta, informazione mancante o nessun intervento necessario.
