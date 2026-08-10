@@ -312,3 +312,10 @@ cat "$REPORT_FILE"
 if [[ "$scope_status" != "PASS" || "$metadata_status" != "PASS" || "$checks_status" != "PASS" ]]; then
     exit 1
 fi
+
+case "$merge_recommendation" in
+    WAIT*)
+        echo "pr-verify: merge recommendation blocks pre-merge status: $merge_recommendation" >&2
+        exit 1
+        ;;
+esac
