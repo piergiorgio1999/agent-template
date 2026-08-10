@@ -18,6 +18,7 @@
         "ci/**",
         "acceptance/**",
         "copier.yml",
+        "{{_copier_conf.answers_file}}.jinja",
         "scope-map.json",
         "TEMPLATE_VERSION",
         ".gitleaks.toml",
