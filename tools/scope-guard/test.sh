@@ -50,6 +50,11 @@ run_guard_with_exception() {
     (cd "$dir" && SCOPE_EXCEPTION_LABELS="scope:exception" ./tools/scope-guard/scope-guard main)
 }
 
+run_guard_with_event() {
+    local dir="$1" event="$2" fake_bin="${3:-}"
+    (cd "$dir" && GITHUB_EVENT_PATH="$event" SCOPE_GUARD_PR_NUMBER="${SCOPE_GUARD_PR_NUMBER:-}" GH_TOKEN="${GH_TOKEN:-}" PATH="${fake_bin:+$fake_bin:}$PATH" ./tools/scope-guard/scope-guard main)
+}
+
 # Case 1: single functional scope only -> pass
 repo="$(make_repo)"
 mkdir -p "$repo/tools/scope-guard"
@@ -58,6 +63,62 @@ git -C "$repo" add -A
 git -C "$repo" commit -q -m "single scope"
 assert_exit "single functional scope passes" 0 run_guard "$repo"
 rm -rf "$repo"
+
+# Case 8: pull_request event without label -> fail
+repo="$(make_repo)"
+mkdir -p "$repo/tools/scope-guard" "$repo/checks/python"
+echo "x" > "$repo/tools/scope-guard/thing"
+echo "y" > "$repo/checks/python/thing"
+git -C "$repo" add -A
+git -C "$repo" commit -q -m "event without exception"
+event="$(mktemp)"
+printf '%s\n' '{"pull_request":{"number":123,"labels":[]}}' > "$event"
+GITHUB_EVENT_PATH="$event" GH_TOKEN="" assert_exit "pull_request without scope:exception fails" 1 run_guard_with_event "$repo" "$event"
+rm -f "$event"
+rm -rf "$repo"
+
+# Case 9: pull_request event with label -> pass
+repo="$(make_repo)"
+mkdir -p "$repo/tools/scope-guard" "$repo/checks/python"
+echo "x" > "$repo/tools/scope-guard/thing"
+echo "y" > "$repo/checks/python/thing"
+git -C "$repo" add -A
+git -C "$repo" commit -q -m "event with exception"
+event="$(mktemp)"
+printf '%s\n' '{"pull_request":{"number":123,"labels":[{"name":"scope:exception"}]}}' > "$event"
+GITHUB_EVENT_PATH="$event" GH_TOKEN="" assert_exit "pull_request with scope:exception passes" 0 run_guard_with_event "$repo" "$event"
+rm -f "$event"
+rm -rf "$repo"
+
+# Case 10: pull_request event uses the explicit PR number for label fallback
+repo="$(make_repo)"
+mkdir -p "$repo/tools/scope-guard" "$repo/checks/python"
+echo "x" > "$repo/tools/scope-guard/thing"
+echo "y" > "$repo/checks/python/thing"
+git -C "$repo" add -A
+git -C "$repo" commit -q -m "event label fallback"
+event="$(mktemp)"
+fake_bin="$(mktemp -d)"
+printf '%s\n' '{"pull_request":{"number":123,"labels":[]}}' > "$event"
+printf '%s\n' '#!/usr/bin/env bash' 'printf "%s\n" "scope:exception"' > "$fake_bin/gh"
+chmod +x "$fake_bin/gh"
+GITHUB_EVENT_PATH="$event" SCOPE_GUARD_PR_NUMBER=123 GH_TOKEN=test assert_exit "explicit PR number drives label fallback" 0 run_guard_with_event "$repo" "$event" "$fake_bin"
+rm -rf "$fake_bin" "$repo"
+
+# Case 11: push event has no PR lookup path
+repo="$(make_repo)"
+mkdir -p "$repo/tools/scope-guard" "$repo/checks/python"
+echo "x" > "$repo/tools/scope-guard/thing"
+echo "y" > "$repo/checks/python/thing"
+git -C "$repo" add -A
+git -C "$repo" commit -q -m "push event"
+event="$(mktemp)"
+fake_bin="$(mktemp -d)"
+printf '%s\n' '{"ref":"refs/heads/main"}' > "$event"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 99' > "$fake_bin/gh"
+chmod +x "$fake_bin/gh"
+GITHUB_EVENT_PATH="$event" GH_TOKEN=test assert_exit "push event does not query a PR" 1 run_guard_with_event "$repo" "$event" "$fake_bin"
+rm -rf "$fake_bin" "$repo"
 
 # Case 2: two functional scopes (no DECISIONS.md) -> fail
 repo="$(make_repo)"
