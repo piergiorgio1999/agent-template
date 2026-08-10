@@ -5,10 +5,13 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-mkdir -p "$WORK/tools/lib" "$WORK/tools/agent-config-check" "$WORK/config/template"
+mkdir -p "$WORK/tools/lib" "$WORK/tools/agent-config-check" \
+    "$WORK/config/template/comment-locales"
 cp "$ROOT/AGENTS.md" "$ROOT/CLAUDE.md" "$ROOT/DECISIONS.md" "$ROOT/TEMPLATE_VERSION" "$WORK/"
 cp "$ROOT/scope-map.json" "$WORK/scope-map.json"
 cp "$ROOT/config/template/version.json" "$WORK/config/template/version.json"
+cp "$ROOT/config/template/comment-locales/"*.json \
+    "$WORK/config/template/comment-locales/"
 cp "$ROOT/tools/lib/common.sh" "$WORK/tools/lib/common.sh"
 cp "$ROOT/tools/agent-config-check/agent-config-check" "$WORK/tools/agent-config-check/agent-config-check"
 
