@@ -29,7 +29,7 @@ run_check() {
 }
 
 # Invoked by run_check.
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 validate_json() {
     jq empty "$1" >/dev/null 2>&1
 }
@@ -40,7 +40,7 @@ validate_index() {
 }
 
 # Invoked by run_check.
-# shellcheck disable=SC2329
+# shellcheck disable=SC2317,SC2329
 validate_scope_coverage() {
     local file name pattern scope
 
