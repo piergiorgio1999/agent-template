@@ -171,23 +171,6 @@ else
     scope_reason="base ref is unavailable: $BASE_REF"
 fi
 
-merge_banner="### 🔴 MERGE RECOMMENDATION: $merge_recommendation"
-merge_action="**DO NOT MERGE YET**"
-case "$merge_recommendation" in
-    SQUASH\ MERGE)
-        merge_banner="### 🟢 MERGE RECOMMENDATION: SQUASH MERGE"
-        merge_action="**MERGE IS ADVISED — use Squash and merge**"
-        ;;
-    REBASE\ MERGE)
-        merge_banner="### 🟢 MERGE RECOMMENDATION: REBASE MERGE"
-        merge_action="**MERGE IS ADVISED — use Rebase and merge**"
-        ;;
-    MERGE\ COMMIT)
-        merge_banner="### 🟢 MERGE RECOMMENDATION: MERGE COMMIT"
-        merge_action="**MERGE IS ADVISED — use Create a merge commit**"
-        ;;
-esac
-
 metadata_status="PASS"
 metadata_reason="PR metadata loaded"
 pr_data='{}'
@@ -227,6 +210,23 @@ if [[ "$metadata_status" == "PASS" ]]; then
         merge_recommendation_reason="$commit_count commit(s), $changed_lines changed line(s), $changed_files file(s): linear history is suitable"
     fi
 fi
+
+merge_banner="### 🔴 MERGE RECOMMENDATION: $merge_recommendation"
+merge_action="**DO NOT MERGE YET**"
+case "$merge_recommendation" in
+    SQUASH\ MERGE)
+        merge_banner="### 🟢 MERGE RECOMMENDATION: SQUASH MERGE"
+        merge_action="**MERGE IS ADVISED — use Squash and merge**"
+        ;;
+    REBASE\ MERGE)
+        merge_banner="### 🟢 MERGE RECOMMENDATION: REBASE MERGE"
+        merge_action="**MERGE IS ADVISED — use Rebase and merge**"
+        ;;
+    MERGE\ COMMIT)
+        merge_banner="### 🟢 MERGE RECOMMENDATION: MERGE COMMIT"
+        merge_action="**MERGE IS ADVISED — use Create a merge commit**"
+        ;;
+esac
 
 checks_status="FAIL"
 checks_reason="status checks were not read"
