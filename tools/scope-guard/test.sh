@@ -120,6 +120,17 @@ chmod +x "$fake_bin/gh"
 GITHUB_EVENT_PATH="$event" GH_TOKEN=test assert_exit "push event does not query a PR" 1 run_guard_with_event "$repo" "$event" "$fake_bin"
 rm -rf "$fake_bin" "$repo"
 
+# Case 12: template paths are classified before broad documentation patterns
+repo="$(make_repo)"
+mkdir -p "$repo/.template/contracts" "$repo/template-only"
+printf '%s\n' 'contract' > "$repo/.template/contracts/custom-tools.md"
+printf '%s\n' 'template' > "$repo/.gitignore"
+touch "$repo/template-only/.keep"
+git -C "$repo" add -A
+git -C "$repo" commit -q -m "template paths"
+assert_exit "template paths use the template scope" 0 run_guard "$repo"
+rm -rf "$repo"
+
 # Case 2: two functional scopes (no DECISIONS.md) -> fail
 repo="$(make_repo)"
 mkdir -p "$repo/tools/scope-guard" "$repo/checks/python"
