@@ -7,7 +7,7 @@ repositories where applicable.
 | ID | Local executable | Result | Notes |
 |---|---|---|---|
 | ACC-01 | No | NOT RUN | Requires a disposable repository and real bootstrap permissions. See `run-ci-tests.sh`. |
-| ACC-02 | No | NOT RUN | Requires a real Ruleset/PR merge without Code Owner deadlock. |
+| ACC-02 | Yes | PASS | Disposable PR #6 merged with squash; CI run `31405030012` passed without self-approval or Code Owner deadlock. |
 | ACC-03 | Yes | PASS | `run-scope-guard.sh`: unclassified file returns failure. |
 | ACC-04 | Yes | PASS | `run-scope-guard.sh`: two functional scopes return failure. |
 | ACC-05 | Yes | PASS | `run-scope-guard.sh`: one functional scope returns success. |
@@ -18,7 +18,7 @@ repositories where applicable.
 | ACC-10 | No | NOT RUN | Requires the digest priority fixture suite and current GitHub evidence. |
 | ACC-11 | No | NOT RUN | Requires the digest attention fixture suite and current GitHub evidence. |
 | ACC-12 | No | NOT RUN | Requires CI branches containing the six language manifests. |
-| ACC-13 | No | NOT RUN | Requires real GitHub CI with Swift Package Manager and Xcode variants. |
+| ACC-13 | Yes | PASS | Disposable CI runs `31405030012`, `31405763029`, and `31409386680` cover SwiftPM, Xcode skip, and configured Xcode execution. |
 | ACC-14 | No | NOT RUN | Requires real CI failure, legitimate skip, and cancellation runs. |
 | ACC-15 | No | NOT RUN | Requires real workflow mutations and blocking actionlint/zizmor checks. |
 | ACC-16 | No | NOT RUN | Requires runtime-only fake secret and real Gitleaks gate. |
@@ -26,7 +26,7 @@ repositories where applicable.
 | ACC-18 | Yes | PASS | `run-digest.sh`: fixture suite plus real digest; 279 bytes and 20 lines in Markdown output. |
 | ACC-19 | No | NOT RUN | Requires disposable standalone and MCP Copier generations plus an update operation. |
 | ACC-20 | No | NOT RUN | Requires a controlled old-`gh` capability check. |
-| ACC-21 | No | NOT RUN | Requires rerunning bootstrap against an already initialized repository. |
+| ACC-21 | Yes | PASS | Bootstrap rerun against the initialized disposable repository refused safely because `.git` already existed. |
 | ACC-22 | No | NOT RUN | Requires real GitHub Ruleset capability degradation. |
 | ACC-23 | No | NOT RUN | Requires real post-merge label-sync workflow evidence. |
 
