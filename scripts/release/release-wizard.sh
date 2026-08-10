@@ -40,12 +40,9 @@ fi
 current_branch="$(git branch --show-current)"
 [[ "$current_branch" == "$BASE_REF" ]] || die "run from $BASE_REF (current: $current_branch)"
 
-step "Deterministic local validation"
-tools/validate/validate.sh || die "template preflight failed"
-acceptance/scripts/run-anti-rot.sh || die "anti-rot acceptance failed"
-acceptance/scripts/run-scope-guard.sh || die "scope-guard acceptance failed"
-
 step "Release gate"
+# prepare-release.sh is the single release preflight orchestrator. Keep all
+# version, acceptance, repository, and CI policy there to avoid drift.
 if ! REPOSITORY="$REPOSITORY" BASE_REF="$BASE_REF" ./scripts/release/prepare-release.sh "$VERSION"; then
     die "release gate blocked publication; no tag or release was created"
 fi
