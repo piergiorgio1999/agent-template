@@ -27,7 +27,7 @@ repositories where applicable.
 | ACC-19 | Yes | PASS | Copier 9.17.1 with `--vcs-ref=HEAD` generated standalone without MCP files and MCP with server, package files, and rendered integration mode. |
 | ACC-20 | No | NOT RUN | Requires a controlled old-`gh` capability check. |
 | ACC-21 | Yes | PASS | Bootstrap rerun against the initialized disposable repository refused safely because `.git` already existed. |
-| ACC-22 | No | NOT RUN | Requires real GitHub Ruleset capability degradation. |
+| ACC-22 | Yes | PASS | Disposable private-repository bootstrap returned the expected GitHub Free Ruleset 403 and failed closed without bypassing protection. |
 | ACC-23 | Yes | PASS | Disposable PR #11 merged with squash; CI run `31430060761` passed, post-merge `label-sync` run `31430296006` passed, and canonical labels plus `acceptance:extra` were present. |
 
 ## Local Commands
@@ -73,8 +73,7 @@ this report. Do not claim a GitHub acceptance case passed from a local mock.
 - ACC-21: rerun bootstrap in the initialized repository; verify no duplicate
   or destructive operation occurs.
 - ACC-22: run against a repository/API capability where Ruleset support is
-  unavailable; verify unsupported is a warning/skip while missing required
-  properties fail.
+  unavailable; verify the bootstrap fails closed without skipping protection.
 - ACC-23: after FASE 3 is merged, push a controlled `.github/labels.yml`
   change to `main`; verify canonical labels synchronize and an extra label is
   retained.
