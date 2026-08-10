@@ -37,31 +37,49 @@
     {
       "name": "typescript",
       "paths": [
-        "checks/typescript/**"
+        "checks/typescript/**",
+        "package.json",
+        "tsconfig.json",
+        "*.ts",
+        "*.tsx",
+        "*.js",
+        "*.jsx",
+        "*.mjs",
+        "*.cjs"
       ]
     },
     {
       "name": "swift",
       "paths": [
-        "checks/swift/**"
+        "checks/swift/**",
+        "Package.swift",
+        "*.swift"
       ]
     },
     {
       "name": "python",
       "paths": [
-        "checks/python/**"
+        "checks/python/**",
+        "pyproject.toml",
+        "setup.py",
+        "requirements.txt",
+        "*.py"
       ]
     },
     {
       "name": "rust",
       "paths": [
-        "checks/rust/**"
+        "checks/rust/**",
+        "Cargo.toml",
+        "*.rs"
       ]
     },
     {
       "name": "go",
       "paths": [
-        "checks/go/**"
+        "checks/go/**",
+        "go.mod",
+        "*.go"
       ]
     },
     {
@@ -69,7 +87,9 @@
       "paths": [
         "checks/shell/**",
         "tools/**",
-        "scripts/**"
+        "scripts/**",
+        "*.sh",
+        "*.bash"
       ]
     },
     {
