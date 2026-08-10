@@ -125,6 +125,26 @@ else
     fail "template preflight missing"
 fi
 
+if [[ -x acceptance/scripts/run-anti-rot.sh ]]; then
+    if acceptance/scripts/run-anti-rot.sh; then
+        pass "anti-rot acceptance passed"
+    else
+        fail "anti-rot acceptance failed"
+    fi
+else
+    fail "anti-rot acceptance missing"
+fi
+
+if [[ -x acceptance/scripts/run-scope-guard.sh ]]; then
+    if acceptance/scripts/run-scope-guard.sh; then
+        pass "scope-guard acceptance passed"
+    else
+        fail "scope-guard acceptance failed"
+    fi
+else
+    fail "scope-guard acceptance missing"
+fi
+
 if git diff --quiet && git diff --cached --quiet; then
     pass "working tree is clean"
 else
