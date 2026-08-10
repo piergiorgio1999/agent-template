@@ -13,10 +13,10 @@ repositories where applicable.
 | ACC-05 | Yes | PASS | `run-scope-guard.sh`: one functional scope returns success. |
 | ACC-06 | Yes | PASS | `run-scope-guard.sh`: functional scope plus unclassified shared path returns failure. |
 | ACC-07 | Yes | PASS | `scope-guard` accepts multiple functional scopes when `scope:exception` is present; covered by merged ACC-07 fix. |
-| ACC-08 | No | NOT RUN | Requires the digest fixture suite and current GitHub evidence. |
-| ACC-09 | No | NOT RUN | Requires the digest blocker fixture suite and current GitHub evidence. |
-| ACC-10 | No | NOT RUN | Requires the digest priority fixture suite and current GitHub evidence. |
-| ACC-11 | No | NOT RUN | Requires the digest attention fixture suite and current GitHub evidence. |
+| ACC-08 | Yes | PASS | `tools/project-status/test.sh` and real digest run verify issue/PR linking state. |
+| ACC-09 | Yes | PASS | `tools/project-status/test.sh` verifies blockedBy and `status:blocked` handling without crashes. |
+| ACC-10 | Yes | PASS | `tools/project-status/test.sh` verifies deterministic priority and issue-number ordering. |
+| ACC-11 | Yes | PASS | `tools/project-status/test.sh` verifies failed checks, conflicts, and `status:attention` precedence. |
 | ACC-12 | No | NOT RUN | Requires CI branches containing the six language manifests. |
 | ACC-13 | Yes | PASS | Disposable CI runs `31405030012`, `31405763029`, and `31409386680` cover SwiftPM, Xcode skip, and configured Xcode execution. |
 | ACC-14 | No | NOT RUN | Requires real CI failure, legitimate skip, and cancellation runs. |
