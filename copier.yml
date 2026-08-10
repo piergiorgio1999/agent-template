@@ -50,4 +50,4 @@ use_shell:
 
 _subdirectory: .
 _exclude:
-  - "{% if integration_mode != 'mcp' %}mcp/**{% else %}__never__{% endif %}"
+  - "{{ 'mcp/**' if integration_mode != 'mcp' else '__never__' }}"
