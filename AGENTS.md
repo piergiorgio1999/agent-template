@@ -40,6 +40,9 @@ File non classificati:
 
 FAIL.
 
+Prima del push di una PR, esegui `tools/scope-guard/scope-guard origin/main`
+sul commit di branch. Se fallisce, non inviare la PR alla CI.
+
 ## Stato progetto
 
 Usa sempre Project Status Digest.
