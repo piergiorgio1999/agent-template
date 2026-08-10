@@ -100,6 +100,7 @@
 ./scope-map.json
 ./scripts/git/status-summary.sh
 ./scripts/release/prepare-release.sh
+./scripts/release/release-wizard.sh
 ./scripts/verify-template.sh
 ./template-fixtures/Cargo.toml
 ./template-fixtures/Package.swift
