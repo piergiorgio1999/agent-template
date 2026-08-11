@@ -6,7 +6,7 @@ repositories where applicable.
 
 | ID | Local executable | Result | Notes |
 |---|---|---|---|
-| ACC-01 | No | NOT RUN | Requires a disposable repository and real bootstrap permissions. See `run-ci-tests.sh`. |
+| ACC-01 | Yes | PASS | Public disposable `agent-template-acc01-e2e-20260811`: bootstrap created and pushed `main`; Ruleset `20682734` active; CI run `31471525814` and Label Sync run `31471525825` passed; auto-delete enabled; Copier metadata present. |
 | ACC-02 | Yes | PASS | Disposable PR #6 merged with squash; CI run `31405030012` passed without self-approval or Code Owner deadlock. |
 | ACC-03 | Yes | PASS | `run-scope-guard.sh`: unclassified file returns failure. |
 | ACC-04 | Yes | PASS | `run-scope-guard.sh`: two functional scopes return failure. |
@@ -20,8 +20,8 @@ repositories where applicable.
 | ACC-12 | Yes | PASS | Disposable PRs #12, #13, #14, and #16 exercised Go, Python, Rust, and TypeScript; SwiftPM and Shell baseline checks also passed in the same runs. |
 | ACC-13 | Yes | PASS | Disposable CI runs `31405030012`, `31405763029`, and `31409386680` cover SwiftPM, Xcode skip, and configured Xcode execution. |
 | ACC-14 | Yes | PASS | Disposable runs `31406282666`, `31405763029`, and `31405762379` verify failure, legitimate skip, and cancellation gate behavior. |
-| ACC-15 | No | NOT RUN | Requires real workflow mutations and blocking actionlint/zizmor checks. |
-| ACC-16 | No | NOT RUN | Requires runtime-only fake secret and real Gitleaks gate. |
+| ACC-15 | Yes | PASS | Public disposable probes: Actionlint runtime fixture run `31469552557` failed on `.github/workflows/runtime-invalid.yml` with `fail_level: error`; Zizmor runtime fixture run `31469605974` passed Actionlint and failed on `unpinned-uses`; both Gates failed. Evidence recorded in PR #93. |
+| ACC-16 | Yes | PASS | Public disposable `agent-template-acc16-clean-probe`, run `31470594493`: history scan reported no leaks; runtime-only untracked fixture was found by `gitleaks dir` (exit 2); Gate failed. Evidence recorded in PR #94. |
 | ACC-17 | Yes | PASS | `run-anti-rot.sh`: invalid scope map and missing DECISIONS.md are rejected. Missing script/stub detection is not implemented by the current checker. |
 | ACC-18 | Yes | PASS | `run-digest.sh`: fixture suite plus real digest; 279 bytes and 20 lines in Markdown output. |
 | ACC-19 | Yes | PASS | Copier 9.17.1 with `--vcs-ref=HEAD` generated standalone without MCP files and MCP with server, package files, and rendered integration mode. |
@@ -52,7 +52,8 @@ Use a disposable branch/repository derived from the current `main` and record
 the commit SHA, workflow URL, expected result, actual result, and cleanup in
 this report. Do not claim a GitHub acceptance case passed from a local mock.
 
-- ACC-01: run bootstrap against a private disposable repository with the
+- ACC-01: run bootstrap against a disposable public repository when privacy is
+  not required, or private only when required, with the
   required repository permissions; verify labels, Ruleset, CI, branch
   auto-delete, and Copier metadata.
 - ACC-02: create and merge a PR under the configured single-owner Ruleset;
