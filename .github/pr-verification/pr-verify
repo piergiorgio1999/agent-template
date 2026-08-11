@@ -274,7 +274,9 @@ check_rows="$(filter_rollup <<<"$rollup" | jq -r '.[] | [(.name // .context // "
     printf '%s\n\n' "## $(text pr_verification)"
     printf '%s\n' "- $(text pr): #${PR_NUMBER:-unavailable} — $title"
     printf '%s\n' "- $(text branch): ${head_name} → ${base_name}"
-    printf '%s\n' "- $(text merge_state): $merge_state"
+    if [[ "$mergeable" != "MERGEABLE" || "$checks_status" != "PASS" || "$merge_state" != "UNSTABLE" ]]; then
+        printf '%s\n' "- $(text merge_state): $merge_state"
+    fi
     printf '%s\n' "- $(text merge_recommendation): $merge_recommendation${merge_recommendation_reason:+ ($merge_recommendation_reason)}"
     printf '%s\n' "- $(text scope): $scope_status ($scope_reason)"
     printf '%s\n' "- $(text metadata): $metadata_status ($metadata_reason)"
