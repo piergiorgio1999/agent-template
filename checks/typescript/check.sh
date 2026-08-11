@@ -7,7 +7,7 @@ if [[ ! -f package.json ]]; then
 fi
 
 if [[ -f tsconfig.json ]]; then
-    npx --yes tsc --noEmit
+    "${TSC_BIN:-tsc}" --noEmit
 fi
 
 if [[ -f .eslintrc.json || -f .eslintrc.js || -f eslint.config.js || -f eslint.config.mjs ]]; then
