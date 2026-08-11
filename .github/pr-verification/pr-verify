@@ -130,6 +130,14 @@ gate_status() {
     '
 }
 
+status_emoji() {
+    case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+        success) printf '🟢' ;;
+        skipped|neutral|not_applicable) printf '⚪' ;;
+        *) printf '🔴' ;;
+    esac
+}
+
 rollup_counts() {
     jq -r '
         def outcome: ((.conclusion // .state // "") | ascii_upcase);
@@ -318,7 +326,8 @@ check_rows="$(filter_rollup <<<"$rollup" | jq -r '.[] | [(.name // .context // "
     if [[ -n "$check_rows" ]]; then
         while IFS=$'\t' read -r check_name check_status check_conclusion; do
             [[ -n "$check_name" ]] || continue
-            printf '%s\n' "- $check_name: $(text status) ${check_status:-unknown}, $(text conclusion) ${check_conclusion:-unknown}"
+            check_outcome="${check_conclusion:-${check_status:-}}"
+            printf '%s\n' "- $(status_emoji "$check_outcome") $check_name: $(text status) ${check_status:-unknown}, $(text conclusion) ${check_conclusion:-unknown}"
         done <<<"$check_rows"
     else
         printf '%s\n' "- $(text none_visible)"
