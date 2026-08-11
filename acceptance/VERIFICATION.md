@@ -182,6 +182,11 @@ audit confirms the canonical file set.
 
 ## Post-V1 Proposals
 
+This section is a non-operative idea registry for possible future versions.
+It is NOT a roadmap, does NOT authorize work, and does NOT represent project
+state. A proposal becomes actionable only after owner approval and creation of
+a dedicated GitHub Issue. Until then agents MUST NOT implement these entries.
+
 - **P-01 — Checker self-test:** evaluate the saved
   `/tmp/checker-selftest-wip.patch` and implement it in a dedicated PR only if
   the audit confirms a concrete reliability benefit.
@@ -195,3 +200,23 @@ audit confirms the canonical file set.
 - **P-05 — Live acceptance harness:** consider a controlled disposable-repo
   harness for repeatable CI-only acceptance evidence; do not run it against
   production repositories.
+- **P-06 — Ephemeral Project Status cache:** evaluate a short-lived,
+  gitignored, non-authoritative cache for `project-status` to reduce GitHub API
+  calls and startup latency. Cache hit/miss MUST NOT change digest semantics;
+  provide an explicit fresh/bypass path if implemented.
+- **P-07 — Dependency-change governance:** evaluate deterministic detection of
+  dependency-manifest changes plus explicit PR declaration/justification of new
+  direct dependencies. Avoid a global `allowed-deps.txt` that duplicates
+  project manifests or becomes a second source of truth.
+- **P-08 — Risk-based human approval gate:** investigate risk classes for
+  architectural/security/destructive changes and require a valid approval for
+  the current PR head when policy demands it. Do not rely on mutable labels or
+  historical/stale approvals as the sole authorization signal.
+- **P-09 — YAML parser policy:** retain no-parser simplicity while YAML parsing
+  is unnecessary; if a future requirement genuinely needs structural YAML
+  parsing, prefer a mature standard parser over ad-hoc Bash parsing and review
+  the SPEC prohibition explicitly before implementation.
+- **P-10 — GitHub CLI compatibility diagnostics:** improve fail-fast messages
+  for required `gh` capabilities with detected/tested version information and
+  platform-appropriate upgrade guidance; do not add a semantic fallback for
+  missing `closingIssuesReferences` support.
