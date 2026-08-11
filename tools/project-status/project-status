@@ -94,6 +94,7 @@ digest="$(jq -n \
   def issue_number: .number;
   def linked_prs($issue): [$prs[] | select(.state == "OPEN") | select([.closingIssuesReferences[]?.number] | index($issue))];
   def is_blocked: ((blocked_by | length) > 0) or ((labels | index("status:blocked")) != null);
+  def issue_attention: ((labels | index("status:attention")) != null);
   def check_failed: ([.statusCheckRollup[]? | (.conclusion // .state // "") | ascii_upcase | IN("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT")] | any);
   def attention($pr): ((labels | index("status:attention")) != null) or ($pr.mergeStateStatus == "CONFLICTING") or ($pr.check_failed);
   def issue_text: ("#" + (.number|tostring) + " " + .title);
@@ -104,12 +105,12 @@ digest="$(jq -n \
     [$issues[] | select((subissues | length) > 0)] | map(. as $feature |
       {issue: ($feature | issue_text), closed: ([$feature | subissues[] | select(.state == "CLOSED")] | length), total: (($feature | subissues) | length)});
   ($issues | map(select(.state == "CLOSED") | issue_text)) as $done |
-  ($issues | map(select(.state == "OPEN") | select((linked_prs(.number) | length) > 0) | issue_text)) as $current |
+  ($issues | map(select(.state == "OPEN") | select(is_blocked | not) | select(issue_attention | not) | select((linked_prs(.number) | length) > 0) | issue_text)) as $current |
   ($issues | map(select(.state == "OPEN") | select(is_blocked) | issue_text)) as $blocked |
   ($issues | map(select(.state == "OPEN") | select(is_blocked) | .number)) as $blocked_numbers |
-  ($issues | map(select(.state == "OPEN") | select((linked_prs(.number) | length) == 0) | select(is_blocked | not) | select((labels | index("status:attention")) != null) | issue_text)) as $label_attention |
+  ($issues | map(select(.state == "OPEN") | select(is_blocked | not) | select(issue_attention) | issue_text)) as $label_attention |
   ($prs | map(select(.state == "OPEN") | select(any(.closingIssuesReferences[]?; true)) | select(attention(.)) | select(any(.closingIssuesReferences[]?.number; . as $n | ($blocked_numbers | index($n)) == null)) | "PR #" + (.number|tostring) + " " + .title)) as $pr_attention |
-  ($issues | map(select(.state == "OPEN") | select((linked_prs(.number) | length) == 0) | select(is_blocked | not) | {text: issue_text, priority: priority, number: .number}) | sort_by((if .priority == "priority:P0" then 0 elif .priority == "priority:P1" then 1 elif .priority == "priority:P2" then 2 else 3 end), .number) | map(.text)) as $next |
+  ($issues | map(select(.state == "OPEN") | select((linked_prs(.number) | length) == 0) | select(is_blocked | not) | select(issue_attention | not) | {text: issue_text, priority: priority, number: .number}) | sort_by((if .priority == "priority:P0" then 0 elif .priority == "priority:P1" then 1 elif .priority == "priority:P2" then 2 else 3 end), .number) | map(.text)) as $next |
   {repository: $repository, generated_at: $generated_at, phase: "V1", progress: {milestones: milestone_progress, features: feature_progress}, current: ($current | sort), done: ($done | sort), next: $next, blocked: ($blocked | sort), attention: (($label_attention + $pr_attention) | unique | sort)}
   ' )"
 

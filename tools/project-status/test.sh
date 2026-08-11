@@ -13,9 +13,13 @@ jq -e '
   .repository == "fixture/repository" and
   (.done | index("#1 Closed work")) and
   (.current | index("#2 In progress")) and
+  ((.current | index("#6 Blocked issue")) | not) and
+  ((.current | index("#7 Needs attention")) | not) and
   (.blocked | index("#3 Blocked work")) and
   (.blocked | index("#6 Blocked issue")) and
   (.next[0] == "#4 Next P2") and
+  ((.next | index("#7 Needs attention")) | not) and
+  (.attention | index("#7 Needs attention")) and
   (.attention | index("PR #11 Conflicting issue 5")) and
   (.attention | index("PR #13 Attention issue 2")) and
   ((.attention | index("PR #12 Blocked issue 6")) | not) and
