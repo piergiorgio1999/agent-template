@@ -17,7 +17,7 @@ repositories where applicable.
 | ACC-09 | Yes | PASS | `tools/project-status/test.sh` verifies blockedBy and `status:blocked` handling without crashes. |
 | ACC-10 | Yes | PASS | `tools/project-status/test.sh` verifies deterministic priority and issue-number ordering. |
 | ACC-11 | Yes | PASS | `tools/project-status/test.sh` verifies failed checks, conflicts, and `status:attention` precedence. |
-| ACC-12 | No | NOT RUN | Requires CI branches containing the six language manifests. |
+| ACC-12 | Yes | PASS | Disposable PRs #12, #13, #14, and #16 exercised Go, Python, Rust, and TypeScript; SwiftPM and Shell baseline checks also passed in the same runs. |
 | ACC-13 | Yes | PASS | Disposable CI runs `31405030012`, `31405763029`, and `31409386680` cover SwiftPM, Xcode skip, and configured Xcode execution. |
 | ACC-14 | Yes | PASS | Disposable runs `31406282666`, `31405763029`, and `31405762379` verify failure, legitimate skip, and cancellation gate behavior. |
 | ACC-15 | No | NOT RUN | Requires real workflow mutations and blocking actionlint/zizmor checks. |
