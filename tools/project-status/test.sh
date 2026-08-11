@@ -13,6 +13,9 @@ jq -e '
   .repository == "fixture/repository" and
   (.done | index("#1 Closed work")) and
   (.current | index("#2 In progress")) and
+  (.current_prs[0].pr == "#10") and
+  (.current_prs[0].diagnosis == "PASS: checks complete") and
+  ([.current_prs[] | select(.pr == "#20") | .diagnosis] | .[0] == "WAIT: external check incomplete") and
   ((.current | index("#6 Blocked issue")) | not) and
   ((.current | index("#7 Needs attention")) | not) and
   (.blocked | index("#3 Blocked work")) and
@@ -42,6 +45,7 @@ long_lines="$(printf '%s\n' "$long_text" | wc -l | tr -d ' ')"
 (( long_bytes <= 8192 ))
 (( long_lines <= 100 ))
 grep -Fq '… truncated' <<<"$long_text"
+grep -Fq '## Current PR' <<<"$text"
 printf '%s' "$long_text" | iconv -f UTF-8 -t UTF-8 >/dev/null
 rm -rf "$long_fixture"
 
