@@ -79,6 +79,8 @@
 ./checks/swift/xcode-check.sh
 ./checks/typescript/README.md
 ./checks/typescript/check.sh
+./checks/typescript/package-lock.json
+./checks/typescript/package.json
 ./ci/contracts/README.md
 ./config/github/features.json
 ./config/languages/checkers.json
