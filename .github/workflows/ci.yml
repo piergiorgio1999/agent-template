@@ -154,7 +154,10 @@ jobs:
 
       - name: TypeScript check
         if: needs.detect.outputs.typescript == 'true'
-        run: ./checks/typescript/check.sh
+        run: |
+          npm ci --ignore-scripts --prefix checks/typescript
+          TSC_BIN="$GITHUB_WORKSPACE/checks/typescript/node_modules/.bin/tsc" \
+            ./checks/typescript/check.sh
 
   swift:
     needs: detect
