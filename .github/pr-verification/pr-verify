@@ -204,19 +204,15 @@ fi
 
 merge_banner="### 🔴 MERGE RECOMMENDATION: $merge_recommendation"
 merge_banner="### 🔴 $(text merge_recommendation): $merge_recommendation"
-merge_action="**$(text do_not_merge)**"
 case "$merge_recommendation" in
     SQUASH\ MERGE)
         merge_banner="### 🟢 $(text merge_recommendation): SQUASH MERGE"
-        merge_action="**$(text merge_advised) — use Squash and merge**"
         ;;
     REBASE\ MERGE)
         merge_banner="### 🟢 $(text merge_recommendation): REBASE MERGE"
-        merge_action="**$(text merge_advised) — use Rebase and merge**"
         ;;
     MERGE\ COMMIT)
         merge_banner="### 🟢 $(text merge_recommendation): MERGE COMMIT"
-        merge_action="**$(text merge_advised) — use Create a merge commit**"
         ;;
 esac
 
@@ -267,7 +263,6 @@ safe_scope_output="$scope_output"
 {
     printf '%s\n' "$MARKER"
     printf '%s\n\n' "$merge_banner"
-    printf '%s\n\n' "$merge_action"
     printf '%s\n\n' "$(text reason): ${merge_recommendation_reason:-unavailable}"
     printf '%s\n\n' "## $(text pr_verification)"
     printf '%s\n' "- $(text pr): #${PR_NUMBER:-unavailable} — $title"
@@ -275,7 +270,6 @@ safe_scope_output="$scope_output"
     if [[ "$mergeable" != "MERGEABLE" || "$checks_status" != "PASS" || "$merge_state" != "UNSTABLE" ]]; then
         printf '%s\n' "- $(text merge_state): $merge_state"
     fi
-    printf '%s\n' "- $(text merge_recommendation): $merge_recommendation${merge_recommendation_reason:+ ($merge_recommendation_reason)}"
     printf '%s\n' "- $(text scope): $scope_status ($scope_reason)"
     printf '%s\n' "- $(text metadata): $metadata_status ($metadata_reason)"
     printf '%s\n' "- $(text status_checks): $checks_status ($checks_reason)"
