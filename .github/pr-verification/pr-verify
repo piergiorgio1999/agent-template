@@ -138,37 +138,6 @@ status_emoji() {
     esac
 }
 
-rollup_counts() {
-    jq -r '
-        def outcome: ((.conclusion // .state // "") | ascii_upcase);
-        def status: ((.status // "") | ascii_upcase);
-        def pending:
-            (outcome) as $outcome |
-            (status) as $status |
-            ($outcome == "" or
-             $outcome == "PENDING" or
-             $outcome == "QUEUED" or
-             $outcome == "IN_PROGRESS" or
-             $outcome == "EXPECTED" or
-             ($status != "" and $status != "COMPLETED"));
-        def failed:
-            (outcome) as $outcome |
-            ($outcome == "FAILURE" or
-             $outcome == "ERROR" or
-             $outcome == "CANCELLED" or
-             $outcome == "TIMED_OUT" or
-             $outcome == "STARTUP_FAILURE" or
-             $outcome == "ACTION_REQUIRED" or
-             $outcome == "STALE");
-        . as $checks |
-        [
-            ([$checks[] | select(pending)] | length),
-            ([$checks[] | select(failed)] | length),
-            ($checks | length)
-        ] | @tsv
-    '
-}
-
 fetch_rollup() {
     local check_runs statuses
     check_runs="$(gh api --paginate "repos/$REPOSITORY/commits/$head_oid/check-runs?per_page=100" | jq -s '[.[].check_runs[]? | {id: .id, name: .name, status: .status, conclusion: .conclusion, startedAt: .started_at, completedAt: .completed_at, updatedAt: .completed_at, workflowName: (.app.name // "")}]')" || return 1
@@ -263,22 +232,14 @@ if [[ "$metadata_status" == "PASS" && -n "$head_oid" ]]; then
         filtered_rollup="$(filter_rollup <<<"$rollup")"
         # shellcheck disable=SC2034
         IFS=$'\t' read -r gate_count gate_pending gate_failed gate_conclusion <<<"$(gate_status <<<"$filtered_rollup")"
-        # shellcheck disable=SC2034
-        IFS=$'\t' read -r pending_count failed_count _ <<<"$(rollup_counts <<<"$filtered_rollup")"
-
-        if (( pending_count == 0 && gate_count > 0 )); then
-            if [[ "$gate_conclusion" != "SUCCESS" ]]; then
+        if (( gate_count > 0 && gate_pending == 0 )); then
+            if (( gate_failed > 0 )) || [[ "$gate_conclusion" != "SUCCESS" ]]; then
                 checks_status="FAIL"
                 checks_reason="CI Gate completed with conclusion $gate_conclusion"
                 break
             fi
             checks_status="PASS"
             checks_reason="$(text ci_gate_passed)"
-            break
-        fi
-        if (( pending_count == 0 && gate_failed > 0 )); then
-            checks_status="FAIL"
-            checks_reason="$(text ci_gate_failed)"
             break
         fi
         if (( SECONDS >= TIMEOUT_SECONDS )); then
