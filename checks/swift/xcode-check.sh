@@ -7,8 +7,8 @@ workspace="${XCODE_WORKSPACE:-}"
 destination="${XCODE_DESTINATION:-platform=macOS}"
 
 if [[ -z "$scheme" ]]; then
-    echo "Xcode check: SKIP — XCODE_SCHEME is not configured"
-    exit 0
+    echo "Xcode check: XCODE_SCHEME is required when an Xcode container is detected" >&2
+    exit 1
 fi
 
 if [[ -n "$project" && -n "$workspace" ]]; then

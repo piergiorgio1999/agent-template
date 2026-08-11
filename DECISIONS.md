@@ -117,3 +117,25 @@ primo livello che determina `WAIT`, `FIX` o `PASS`. Stato locale e digest
 precedono i campi GitHub strutturati; metadati mirati del fallimento precedono
 log, commenti e cronologia. Questo riduce chiamate API e contesto senza creare
 nuovi tool o source of truth e senza modificare la semantica della CI.
+
+## 2026-08-11 — CI Gate come macchina a stati deterministica
+
+La topologia dei checker è dichiarata una volta nel `needs` di `CI Gate`; il
+Gate legge nativamente `needs` e la mappa di applicabilità prodotta da
+`detect`, senza lista duplicata né parsing del workflow. Per ciascun checker:
+PASS equivale esclusivamente a `applicable=true,result=success` oppure
+`applicable=false,result=skipped`. Stati mancanti, ignoti, cancellati o
+incoerenti falliscono chiuso.
+
+Il linking nativo Issue/PR è un checker a monte del Gate: per PR umane richiede
+una sola `closingIssuesReferences`; solo `dependabot[bot]` è nell'allowlist
+statica. Il job `pr-verification` resta reporting post-Gate e non sostituisce
+`CI Gate` come unico required check.
+
+## 2026-08-11 — Override: detection Swift/Xcode deterministica
+
+Questa decisione sostituisce soltanto la semantica di detection/toolchain della
+decisione "Esecuzione SwiftPM e Xcode separata su macOS": `Package.swift`
+abilita SwiftPM; `*.xcodeproj` o `*.xcworkspace` abilita Xcode; `*.swift` da
+solo non abilita un checker Swift. Un container Xcode rilevato senza
+`XCODE_SCHEME` è applicabile ma incompleto e fallisce chiuso, non è uno skip.
