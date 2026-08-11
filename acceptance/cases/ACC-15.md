@@ -1,10 +1,11 @@
 # ACC-15
 
-Status: NOT RUN
+Status: PASS
 
 Purpose: Actions security
 
 Expected Result: non pinnata → zizmor FAIL; sintassi errata → actionlint FAIL
 
 Implementation:
-Deferred to coding agent.
+Disposable runtime probes verified Actionlint and Zizmor failures separately;
+see acceptance/VERIFICATION.md.
