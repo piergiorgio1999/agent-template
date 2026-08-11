@@ -264,8 +264,6 @@ if [[ "$metadata_status" == "PASS" && -n "$head_oid" ]]; then
 fi
 
 safe_scope_output="$scope_output"
-check_rows="$(filter_rollup <<<"$rollup" | jq -r '.[] | [(.name // .context // "unnamed"), (.status // .state // ""), (.conclusion // .state // "")] | @tsv')"
-
 {
     printf '%s\n' "$MARKER"
     printf '%s\n\n' "$merge_banner"
@@ -285,16 +283,6 @@ check_rows="$(filter_rollup <<<"$rollup" | jq -r '.[] | [(.name // .context // "
     printf '%s\n' '<pre>'
     printf '%s\n' "$safe_scope_output"
     printf '%s\n' '</pre>'
-    printf '\n### %s\n' "$(text non_self_status_checks)"
-    if [[ -n "$check_rows" ]]; then
-        while IFS=$'\t' read -r check_name check_status check_conclusion; do
-            [[ -n "$check_name" ]] || continue
-            check_outcome="${check_conclusion:-${check_status:-}}"
-            printf '%s\n' "- $(status_emoji "$check_outcome") $check_name: $(text status) ${check_status:-unknown}, $(text conclusion) ${check_conclusion:-unknown}"
-        done <<<"$check_rows"
-    else
-        printf '%s\n' "- $(text none_visible)"
-    fi
 } > "$REPORT_FILE"
 
 cat "$REPORT_FILE"
