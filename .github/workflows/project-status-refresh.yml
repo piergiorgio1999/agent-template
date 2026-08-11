@@ -1,0 +1,40 @@
+name: Project Status Refresh
+
+on:
+  push:
+  create:
+  delete:
+  pull_request:
+    types: [opened, synchronize, reopened, closed, ready_for_review]
+  issues:
+    types: [opened, reopened, closed, labeled, unlabeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+  checks: read
+  statuses: read
+
+concurrency:
+  group: project-status-refresh
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    if: >-
+      github.event_name != 'create' && github.event_name != 'delete' ||
+      github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Generate current Project Status
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: tools/project-status/project-status md >> "$GITHUB_STEP_SUMMARY"

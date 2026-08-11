@@ -119,11 +119,13 @@ generated_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 digest="$(jq -n \
     --arg repository "$repo" \
     --arg generated_at "$generated_at" \
-    --argjson issues "$issues_json" \
-    --argjson prs "$prs_json" \
+    --slurpfile issues_file "$tmpdir/issues.json" \
+    --slurpfile prs_file "$tmpdir/prs.json" \
     --argjson issue_features "${issue_features:-true}" \
     --argjson diagnostics "$diagnostics" \
     --argjson diagnose "$([[ "$MODE" == "diagnose" ]] && echo true || echo false)" '
+  ($issues_file[0]) as $issues |
+  ($prs_file[0]) as $prs |
   def labels: (.labels // []) | map(if type == "object" then .name else . end);
   def subissues: if (.subIssues | type) == "object" then (.subIssues.nodes // []) else (.subIssues // []) end;
   def blocked_by: if (.blockedBy | type) == "object" then (.blockedBy.nodes // []) else (.blockedBy // []) end;
