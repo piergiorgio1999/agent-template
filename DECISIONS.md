@@ -109,3 +109,11 @@ solo per le PR aperte che hanno check falliti sull'head corrente. Il comando
 deriva automaticamente i run, legge soltanto i job falliti e non richiede un
 run ID. La modalità standard resta invariata; non nasce un quinto tool né una
 nuova source of truth.
+
+## 2026-08-11 — Escalation minima dell'evidenza diagnostica
+
+Le diagnosi agentiche seguono livelli deterministici L0–L3 e si fermano al
+primo livello che determina `WAIT`, `FIX` o `PASS`. Stato locale e digest
+precedono i campi GitHub strutturati; metadati mirati del fallimento precedono
+log, commenti e cronologia. Questo riduce chiamate API e contesto senza creare
+nuovi tool o source of truth e senza modificare la semantica della CI.

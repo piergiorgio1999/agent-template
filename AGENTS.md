@@ -63,6 +63,24 @@ Usare prima i controlli deterministici.
 
 Ricorrere al modello LLM solo quando i controlli automatici non sono sufficienti.
 
+## Disciplina di osservazione
+
+Usare sempre il livello minimo che consente di determinare `WAIT`, `FIX` o
+`PASS`; fermarsi appena la diagnosi è determinata:
+
+- L0 — stato deterministico locale: Project Status Digest e repository locale.
+- L1 — stato GitHub strutturato compatto: numero PR, `statusCheckRollup` e stato merge.
+- L2 — evidenza di esecuzione mirata: metadati del job fallito e step fallito.
+- L3 — evidenza grezza: log completi, commenti e cronologia.
+
+Iniziare da L0 e passare al livello successivo solo se quello corrente non è
+sufficiente. Preferire campi strutturati ai commenti. Non usare i commenti PR
+come source of truth, non leggere la cronologia completa per una diagnosi e non
+caricare log completi senza avere prima identificato un check fallito.
+
+Se a L1 un check è `IN_PROGRESS`, terminare con
+`WAIT: external check incomplete` senza leggere commenti, commit o log.
+
 ## Merge delle PR
 
 Prima di effettuare il merge, un agente legge il commento aggiornabile di
