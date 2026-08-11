@@ -220,3 +220,8 @@ a dedicated GitHub Issue. Until then agents MUST NOT implement these entries.
   for required `gh` capabilities with detected/tested version information and
   platform-appropriate upgrade guidance; do not add a semantic fallback for
   missing `closingIssuesReferences` support.
+- **P-11 — Renovate alternative dependency bot (PRIORITY: MINIMAL):** evaluate
+  Renovate only in a future version if its richer package rules, grouping,
+  scheduling, automerge controls, or ecosystem coverage provide a concrete
+  advantage over the GitHub-native Dependabot configuration. Keep Dependabot as
+  the default; do not run both bots against the same dependency ecosystems.
