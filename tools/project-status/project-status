@@ -105,7 +105,7 @@ if [[ "$MODE" == "diagnose" ]]; then
                 jq -cn --argjson pr "$pr_number" --arg workflow "$(jq -r '.name' <<<"$run")" \
                     --arg job "$job_name" --arg step "$step_name" --arg error "$error" \
                     --arg location "$location" --arg url "$(jq -r '.url' <<<"$run")" --arg escalation "$escalation" \
-                    '{pr:$pr,workflow:$workflow,job:$job,step:$step,error:$error,location:($location|select(length>0)),url:$url,escalation:$escalation}' \
+                    '{pr:$pr,workflow:$workflow,job:$job,step:$step,error:$error,location:($location | if length > 0 then . else null end),url:$url,escalation:$escalation}' \
                     >>"$diagnostics_file"
             done < <(gh_with_repo run view "$run_id" --json jobs --jq '.jobs[] | select(.conclusion == "failure") | [.databaseId,.name,([.steps[] | select(.conclusion == "failure") | .name][0] // "unknown")] | @tsv')
         done < <(jq -r '.[] | select(.state == "OPEN") | select(any(.statusCheckRollup[]?; ((.conclusion // .state // "") | ascii_upcase) | IN("FAILURE","ERROR","CANCELLED","TIMED_OUT","ACTION_REQUIRED"))) | [.number,.headRefOid] | @tsv' <<<"$prs_json")

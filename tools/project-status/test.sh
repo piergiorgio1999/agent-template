@@ -32,11 +32,12 @@ jq -e '
 
 diagnose_json="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" diagnose json)"
 jq -e '
-  (.ci_diagnostics | length) == 1 and
+  (.ci_diagnostics | length) == 2 and
   .ci_diagnostics[0].pr == 11 and
   .ci_diagnostics[0].job == "security" and
   .ci_diagnostics[0].step == "Zizmor" and
-  .ci_diagnostics[0].location == "src/workflow.yml:42:7"
+  .ci_diagnostics[0].location == "src/workflow.yml:42:7" and
+  .ci_diagnostics[1].location == null
 ' <<<"$diagnose_json" >/dev/null
 
 text="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" md)"
