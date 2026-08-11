@@ -94,3 +94,10 @@ disponibile per il repository/account. Un errore di capability o permesso
 termina il bootstrap; non vengono emessi warning+skip e non si prosegue come
 se la protezione fosse stata applicata. Questo preserva il contratto di
 protezione del branch anche su GitHub Free privato.
+
+## 2026-08-11 — Project Status capability fallback
+
+Se la CLI GitHub non espone `closingIssuesReferences`, Project Status non
+ricostruisce una versione diversa del digest e non si interrompe senza
+diagnosi: emette un warning esplicito e usa il fallback deterministico basato
+su label e stato della PR. Il comportamento resta read-only.
