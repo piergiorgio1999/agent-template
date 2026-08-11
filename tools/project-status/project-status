@@ -97,6 +97,20 @@ digest="$(jq -n \
   def issue_attention: ((labels | index("status:attention")) != null);
   def check_failed: ([.statusCheckRollup[]? | (.conclusion // .state // "") | ascii_upcase | IN("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT")] | any);
   def attention($pr): ((labels | index("status:attention")) != null) or ($pr.mergeStateStatus == "CONFLICTING") or ($pr.check_failed);
+  def check_icon:
+    . as $check |
+    (($check.conclusion // $check.state // "") | ascii_downcase) as $outcome |
+    if $outcome == "success" then "🟢"
+    elif ($outcome == "skipped" or $outcome == "neutral" or $outcome == "not_applicable") then "⚪"
+    else "🔴" end;
+  def check_label:
+    . as $check |
+    ($check | check_icon) as $icon |
+    (($check.name // $check.context // "unnamed") + " " + $icon + " " + (($check.conclusion // $check.state // "unknown") | ascii_downcase));
+  def pr_diagnosis:
+    if ([.statusCheckRollup[]? | . as $check | select(((($check.status // "") | ascii_downcase) != "completed") and (($check.conclusion // "") == "" or $check.conclusion == null))] | length) > 0 then "WAIT: external check incomplete"
+    elif ([.statusCheckRollup[]? | ((.conclusion // .state // "") | ascii_downcase) | select(. == "failure" or . == "error" or . == "cancelled" or . == "timed_out" or . == "action_required")] | length) > 0 then "FIX: check failure"
+    else "PASS: checks complete" end;
   def issue_text: ("#" + (.number|tostring) + " " + .title);
   def milestone_progress:
     [ $issues[] | select(.milestone != null) | .milestone.title ] | unique | map(. as $m |
@@ -105,13 +119,15 @@ digest="$(jq -n \
     [$issues[] | select((subissues | length) > 0)] | map(. as $feature |
       {issue: ($feature | issue_text), closed: ([$feature | subissues[] | select(.state == "CLOSED")] | length), total: (($feature | subissues) | length)});
   ($issues | map(select(.state == "CLOSED") | issue_text)) as $done |
-  ($issues | map(select(.state == "OPEN") | select(is_blocked | not) | select(issue_attention | not) | select((linked_prs(.number) | length) > 0) | issue_text)) as $current |
+  ($issues | map(select(.state == "OPEN") | select(is_blocked | not) | select(issue_attention | not) | select((linked_prs(.number) | length) > 0))) as $current_issues |
+  ($current_issues | map(issue_text)) as $current |
+  ([$current_issues[] as $issue | linked_prs($issue.number)[] | {issue: ("#" + ($issue.number|tostring)), pr: ("#" + (.number|tostring)), checks: [.statusCheckRollup[]? | check_label], diagnosis: pr_diagnosis}]) as $current_prs |
   ($issues | map(select(.state == "OPEN") | select(is_blocked) | issue_text)) as $blocked |
   ($issues | map(select(.state == "OPEN") | select(is_blocked) | .number)) as $blocked_numbers |
   ($issues | map(select(.state == "OPEN") | select(is_blocked | not) | select(issue_attention) | issue_text)) as $label_attention |
   ($prs | map(select(.state == "OPEN") | select(any(.closingIssuesReferences[]?; true)) | select(attention(.)) | select(any(.closingIssuesReferences[]?.number; . as $n | ($blocked_numbers | index($n)) == null)) | "PR #" + (.number|tostring) + " " + .title)) as $pr_attention |
   ($issues | map(select(.state == "OPEN") | select((linked_prs(.number) | length) == 0) | select(is_blocked | not) | select(issue_attention | not) | {text: issue_text, priority: priority, number: .number}) | sort_by((if .priority == "priority:P0" then 0 elif .priority == "priority:P1" then 1 elif .priority == "priority:P2" then 2 else 3 end), .number) | map(.text)) as $next |
-  {repository: $repository, generated_at: $generated_at, phase: "V1", progress: {milestones: milestone_progress, features: feature_progress}, current: ($current | sort), done: ($done | sort), next: $next, blocked: ($blocked | sort), attention: (($label_attention + $pr_attention) | unique | sort)}
+  {repository: $repository, generated_at: $generated_at, phase: "V1", progress: {milestones: milestone_progress, features: feature_progress}, current: ($current | sort), current_prs: $current_prs, done: ($done | sort), next: $next, blocked: ($blocked | sort), attention: (($label_attention + $pr_attention) | unique | sort)}
   ' )"
 
 if [[ "$FORMAT" == "json" ]]; then
@@ -119,7 +135,7 @@ if [[ "$FORMAT" == "json" ]]; then
 else
     markdown="$(jq -r '
       def list_or_none: if length == 0 then "none" else join("\n") end;
-      ["# Project Status", "", "Repository: \(.repository)", "Generated: \(.generated_at)", "Phase: \(.phase)", "", "## Progress", (.progress | tostring), "", "## Current", (.current | list_or_none), "", "## Next", (.next | list_or_none), "", "## Blocked", (.blocked | list_or_none), "", "## Attention", (.attention | list_or_none)] | join("\n")
+      ["# Project Status", "", "Repository: \(.repository)", "Generated: \(.generated_at)", "Phase: \(.phase)", "", "## Progress", (.progress | tostring), "", "## Current", (.current | list_or_none), "", "## Current PR", (if (.current_prs | length) == 0 then "none" else (.current_prs[] | [.pr, "", (.checks | join("\n")), "", .diagnosis] | join("\n")) end), "", "## Next", (.next | list_or_none), "", "## Blocked", (.blocked | list_or_none), "", "## Attention", (.attention | list_or_none)] | join("\n")
     ' <<<"$digest")"
     lines="$(printf '%s\n' "$markdown" | wc -l | tr -d ' ')"
     if (( lines > 100 )); then
