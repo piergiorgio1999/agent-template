@@ -9,11 +9,13 @@
 ./.github/filters.yml
 ./.github/labels.yml
 ./.github/pr-verification/pr-verify
+./.github/pr-verification/test-status-emoji.sh
 ./.github/pull_request_template.md
 ./.github/ruleset.json.jinja
 ./.github/workflows/checker-selftest.yml
 ./.github/workflows/ci.yml
 ./.github/workflows/label-sync.yml
+./.github/workflows/scorecard.yml
 ./.gitignore
 ./.gitleaks.toml
 ./.template/contracts/custom-tools.md
