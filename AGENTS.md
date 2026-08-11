@@ -63,6 +63,10 @@ Usare prima i controlli deterministici.
 
 Ricorrere al modello LLM solo quando i controlli automatici non sono sufficienti.
 
+Ogni bug concreto osservato durante il lavoro deve essere registrato come
+GitHub Issue con riproduzione ed evidenza minima. Non creare registri locali,
+file di bug o task list parallele.
+
 ## Disciplina di osservazione
 
 Usare sempre il livello minimo che consente di determinare `WAIT`, `FIX` o

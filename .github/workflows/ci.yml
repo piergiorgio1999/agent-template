@@ -28,6 +28,12 @@ jobs:
       - name: Agent Config Check
         run: ./tools/agent-config-check/agent-config-check
 
+      - name: CI helper matrices
+        run: |
+          .github/ci-gate/test-state.sh
+          .github/ci-gate/test-linking.sh
+          checks/swift/test-detect.sh
+
   scope-guard:
     needs: anti-rot
     runs-on: ubuntu-latest
@@ -54,12 +60,14 @@ jobs:
       contents: read
     outputs:
       typescript: ${{ steps.detect.outputs.typescript }}
-      swift: ${{ steps.detect.outputs.swift }}
+      swiftpm: ${{ steps.detect.outputs.swiftpm }}
       xcode: ${{ steps.detect.outputs.xcode }}
       python: ${{ steps.detect.outputs.python }}
       rust: ${{ steps.detect.outputs.rust }}
       go: ${{ steps.detect.outputs.go }}
       shell: ${{ steps.detect.outputs.shell }}
+      checks: ${{ steps.detect.outputs.checks }}
+      gate_applicability: ${{ steps.detect.outputs.gate_applicability }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -67,8 +75,6 @@ jobs:
 
       - name: Detect languages
         id: detect
-        env:
-          XCODE_SCHEME: ${{ vars.XCODE_SCHEME }}
         run: |
           detect() {
             local name="$1"; shift
@@ -81,12 +87,9 @@ jobs:
             echo "$name=false" >> "$GITHUB_OUTPUT"
           }
           detect typescript package.json tsconfig.json
-          detect swift Package.swift
-          if [[ -n "$XCODE_SCHEME" ]] || find . -type d \( -name '*.xcodeproj' -o -name '*.xcworkspace' \) -print -quit | grep -q .; then
-            echo "xcode=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "xcode=false" >> "$GITHUB_OUTPUT"
-          fi
+          swift_detection="$(./checks/swift/detect.sh .)"
+          echo "swiftpm=$(jq -r '.swiftpm' <<<"$swift_detection")" >> "$GITHUB_OUTPUT"
+          echo "xcode=$(jq -r '.xcode' <<<"$swift_detection")" >> "$GITHUB_OUTPUT"
           detect python pyproject.toml setup.py requirements.txt
           detect rust Cargo.toml
           detect go go.mod
@@ -95,9 +98,24 @@ jobs:
           else
             echo "shell=false" >> "$GITHUB_OUTPUT"
           fi
+          checks=false
+          for checker in typescript python rust go shell; do
+            [[ "$(grep "^$checker=" "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2-)" == "true" ]] && checks=true
+          done
+          echo "checks=$checks" >> "$GITHUB_OUTPUT"
+          jq -cn \
+            --argjson checks "$checks" \
+            --argjson swiftpm "$(jq -r '.swiftpm' <<<"$swift_detection")" \
+            --argjson xcode "$(jq -r '.xcode' <<<"$swift_detection")" \
+            --arg event "$GITHUB_EVENT_NAME" \
+            '{"anti-rot": true, "scope-guard": true, detect: true, checks: $checks,
+              swift: ($swiftpm or $xcode), security: true,
+              linking: ($event == "pull_request")}' \
+            | { read -r gate_applicability; echo "gate_applicability=$gate_applicability" >> "$GITHUB_OUTPUT"; }
 
   checks:
     needs: detect
+    if: needs.detect.outputs.checks == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -161,7 +179,7 @@ jobs:
 
   swift:
     needs: detect
-    if: needs.detect.outputs.swift == 'true' || needs.detect.outputs.xcode == 'true'
+    if: needs.detect.outputs.swiftpm == 'true' || needs.detect.outputs.xcode == 'true'
     runs-on: macos-latest
     timeout-minutes: 30
     permissions:
@@ -172,7 +190,7 @@ jobs:
           persist-credentials: false
 
       - name: SwiftPM test
-        if: needs.detect.outputs.swift == 'true'
+        if: needs.detect.outputs.swiftpm == 'true'
         run: ./checks/swift/check.sh
 
       - name: Xcode test
@@ -183,6 +201,28 @@ jobs:
           XCODE_SCHEME: ${{ vars.XCODE_SCHEME }}
           XCODE_WORKSPACE: ${{ vars.XCODE_WORKSPACE }}
         run: ./checks/swift/xcode-check.sh
+
+  linking:
+    needs: detect
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify native Issue/PR link
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          PR_CLOSING_REFERENCES_JSON="$(gh pr view "$PR_NUMBER" --repo "$REPOSITORY" --json closingIssuesReferences --jq '.closingIssuesReferences')"
+          export PR_CLOSING_REFERENCES_JSON
+          .github/ci-gate/check-linking
 
   security:
     needs: detect
@@ -229,15 +269,18 @@ jobs:
       - checks
       - swift
       - security
+      - linking
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: CI Gate
-        run: |
-          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            echo "❌ CI Gate: one or more required jobs failed"
-            exit 1
-          fi
-          echo "✅ CI Gate: all required jobs passed"
+        env:
+          CI_GATE_NEEDS_JSON: ${{ toJSON(needs) }}
+          CI_GATE_APPLICABILITY_JSON: ${{ needs.detect.outputs.gate_applicability }}
+        run: .github/ci-gate/check-state
 
   pr_verification:
     name: pr-verification

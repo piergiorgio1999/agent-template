@@ -4,6 +4,10 @@
 ./.github/ISSUE_TEMPLATE/config.yml
 ./.github/ISSUE_TEMPLATE/feature.yml
 ./.github/ISSUE_TEMPLATE/task.yml
+./.github/ci-gate/check-linking
+./.github/ci-gate/check-state
+./.github/ci-gate/test-linking.sh
+./.github/ci-gate/test-state.sh
 ./.github/copilot-instructions.md
 ./.github/dependabot.yml
 ./.github/filters.yml
@@ -78,6 +82,8 @@
 ./checks/shell/check.sh
 ./checks/swift/README.md
 ./checks/swift/check.sh
+./checks/swift/detect.sh
+./checks/swift/test-detect.sh
 ./checks/swift/xcode-check.sh
 ./checks/typescript/README.md
 ./checks/typescript/check.sh
