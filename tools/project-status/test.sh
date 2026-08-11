@@ -30,7 +30,19 @@ jq -e '
   (.progress.features[0].total == 2)
 ' <<<"$json" >/dev/null
 
+diagnose_json="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" diagnose json)"
+jq -e '
+  (.ci_diagnostics | length) == 1 and
+  .ci_diagnostics[0].pr == 11 and
+  .ci_diagnostics[0].job == "security" and
+  .ci_diagnostics[0].step == "Zizmor" and
+  .ci_diagnostics[0].location == "src/workflow.yml:42:7"
+' <<<"$diagnose_json" >/dev/null
+
 text="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" md)"
+diagnose_text="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" diagnose md)"
+grep -Fq '## CI Diagnostics' <<<"$diagnose_text"
+grep -Fq 'src/workflow.yml:42:7' <<<"$diagnose_text"
 bytes="$(printf '%s' "$text" | wc -c | tr -d ' ')"
 lines="$(printf '%s\n' "$text" | wc -l | tr -d ' ')"
 (( bytes <= 8192 ))

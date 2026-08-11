@@ -101,3 +101,11 @@ Se la CLI GitHub non espone `closingIssuesReferences`, Project Status non
 ricostruisce una versione diversa del digest e non si interrompe senza
 diagnosi: emette un warning esplicito e usa il fallback deterministico basato
 su label e stato della PR. Il comportamento resta read-only.
+
+## 2026-08-11 — Diagnosi CI opt-in in Project Status
+
+`project-status diagnose` estende il digest read-only con errori CI compatti
+solo per le PR aperte che hanno check falliti sull'head corrente. Il comando
+deriva automaticamente i run, legge soltanto i job falliti e non richiede un
+run ID. La modalità standard resta invariata; non nasce un quinto tool né una
+nuova source of truth.
