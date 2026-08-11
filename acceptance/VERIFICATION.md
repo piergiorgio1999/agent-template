@@ -52,10 +52,9 @@ Use a disposable branch/repository derived from the current `main` and record
 the commit SHA, workflow URL, expected result, actual result, and cleanup in
 this report. Do not claim a GitHub acceptance case passed from a local mock.
 
-- ACC-01: run bootstrap against a disposable public repository when privacy is
-  not required, or private only when required, with the
-  required repository permissions; verify labels, Ruleset, CI, branch
-  auto-delete, and Copier metadata.
+- ACC-01: run bootstrap against a disposable repository where the required
+  Ruleset capability is available; use a public repository on GitHub Free and
+  verify labels, Ruleset, CI, branch auto-delete, and Copier metadata.
 - ACC-02: create and merge a PR under the configured single-owner Ruleset;
   verify that Code Owner self-approval is not required.
 - ACC-12: create separate branches with each supported language manifest and
@@ -103,8 +102,9 @@ actual result, then delete the disposable repository through the GitHub UI or
 ### ACC-01 Bootstrap end-to-end
 
 Run `./tools/bootstrap/bootstrap` in the generated directory. Verify the
-private repository, initial `main` push, canonical labels, Ruleset, first CI
-run, branch auto-delete setting, and Copier metadata. Record the first CI URL
+repository with the required Ruleset capability, initial `main` push,
+canonical labels, Ruleset, first CI run, branch auto-delete setting, and
+Copier metadata. Record the first CI URL
 from `gh run list --repo "$TEST_REPO" --branch main --limit 1 --json url`.
 
 ### ACC-02 Single-owner workflow
