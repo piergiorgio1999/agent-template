@@ -1,4 +1,4 @@
-# SPEC-V1.1 — Agent-Ready Template (CONGELATA)
+# SPEC-V1.2 — Agent-Ready Template (CONGELATA)
 
 Questo file è IL CONTRATTO vincolante.
 In caso di divergenza con qualsiasi altro file del repo (docs, config/,
@@ -31,7 +31,7 @@ README AGENTS CLAUDE DECISIONS SECURITY | copier.yml scope-map.json |
 tools/(scope-guard agent-config-check project-status bootstrap) | checks/ | template-fixtures/
 Profilo MCP opzionale: mcp/(server.mjs package.json package-lock.json README.md).
 
-NOTA AUDIT: le directory extra ereditate (config/, schemas/, scripts/, .template/, release/, tools/validate/) NON vanno cancellate ora. Audit DOPO che ACC-01..23 sono verdi; rimuovere/consolidare solo ciò che resta inutilizzato.
+NOTA AUDIT: le directory extra ereditate (config/, schemas/, scripts/, .template/, release/, tools/validate/) NON vanno cancellate ora. Audit DOPO che ACC-01..29 sono verdi; rimuovere/consolidare solo ciò che resta inutilizzato.
 
 ## 5. SOURCE OF TRUTH
 istruzioni agenti→AGENTS.md | decisioni→DECISIONS.md | task→Issues | scomposizione→sub-issues | blocker→dependencies | fase→Milestone | priorità→labels priority:* | in progress→Issue open+PR open | completamento→closed/merged | verifica→Checks | cronologia→Git | stato sintetico→Digest derivato
@@ -63,7 +63,7 @@ Timeout: Linux static 10m, Linux test/build 20m, macOS Swift 30m, self-test 30m.
 GITHUB_TOKEN default contents:read; elevazioni solo per-job.
 
 ## 10. ACCEPTANCE
-ACC-01..23 = contratto eseguibile. ACC-19 verifica anche che Copier escluda i file MCP in modalità `standalone` e li includa in modalità `mcp`. acceptance/cases/ è la trascrizione eseguibile di questa SPEC, compilata SOLO da questa SPEC, commitata CONTESTUALMENTE a questo file. In caso di divergenza, SPEC-V1.md prevale.
+ACC-01..29 = contratto eseguibile. ACC-19 verifica anche che Copier escluda i file MCP in modalità `standalone` e li includa in modalità `mcp`. acceptance/cases/ è la trascrizione eseguibile di questa SPEC, compilata SOLO da questa SPEC, commitata CONTESTUALMENTE a questo file. In caso di divergenza, SPEC-V1.md prevale.
 
 ## 11. REGOLE AGENTI
 Leggi SPEC-V1.md prima di ogni modifica | non reimplementare esistente | no custom framework | tool prima della CI | test locali prima dell'integrazione | Bash set -euo pipefail ShellCheck-clean | YAML actionlint-clean | JSON jq-validabile | non conforme→STOP e segnala.
@@ -78,3 +78,81 @@ Leggi SPEC-V1.md prima di ogni modifica | non reimplementare esistente | no cust
   incompatibilità GitHub reale, deadlock operativo, violazione single source
   of truth, alternativa plug-and-play chiaramente superiore.
   Anche in questi casi: l'agente segnala e attende istruzione.
+
+## 13. MAPPE DERIVATE DEL REPOSITORY
+1. Il template espone tre alberi gerarchici read-only, percorsi dalla radice
+   fino a ogni foglia disponibile senza profondità fissa:
+   - `dependencies`: componenti e dipendenze dichiarate;
+   - `ci`: flusso operativo contrattuale della sezione 9;
+   - `status`: stato lavori secondo le semantiche della sezione 7.
+   Quando la fonte contiene dati sufficienti, la gerarchia minima è
+   radice→categoria→elemento→dettaglio. Nodi ripetuti sono riferimenti stabili;
+   un ciclo è chiuso da un riferimento esplicito, mai attraversato di nuovo.
+2. Ogni nodo e relazione deriva da una fonte Git-tracciata o GitHub esplicita:
+   - `dependencies`: `scope-map.json` classifica i componenti; i `package.json`
+     Git-tracciati espongono le chiavi dirette `dependencies`,
+     `devDependencies`, `optionalDependencies`, `peerDependencies`; i
+     `Package.resolved` Git-tracciati espongono i pin. `Package.swift`,
+     `pyproject.toml`, `requirements*.txt`, `Cargo.toml` e `go.mod` sono
+     riconosciuti come manifest ma, nella V1.2, mostrano esplicitamente
+     `details unavailable` invece di essere analizzati;
+   - `ci`: la sequenza normativa della sezione 9. È una vista del contratto,
+     NON una DAG estratta dal workflow e NON ne dichiara la completezza;
+   - `status`: gli stessi dati normalizzati, categorie, precedenze e limiti del
+     Project Status Digest per Issue, PR, milestone, label e check GitHub.
+   VIETATO inferire con un LLM dipendenze, comportamento semantico o relazioni
+   non dimostrate. Una fonte riconosciuta ma non supportata è sempre indicata
+   come non disponibile; l'omissione silenziosa è vietata.
+3. `dependencies` e `ci` sono viste statiche derivate dall'HEAD. Possono essere
+   committate solo nei blocchi generati delimitati del README; non sono source
+   of truth. `status` è live e derivata da GitHub: mai committata, mai cache
+   autorevole, mai contenuto persistente del README. Il README espone soltanto
+   il comando e il collegamento alla vista di GitHub Actions. `live` significa
+   snapshot read-only al momento del run, non sincronizzazione continua.
+4. Restano esattamente quattro tool custom. Le mappe sono modalità di
+   `project-status`; `agent-config-check` verifica la freschezza delle viste
+   statiche. Vietati un quinto tool, servizi remoti, webhook, write-back e
+   generatori LLM.
+5. L'interfaccia è `project-status map TYPE FORMAT [--full] [--repo OWNER/REPO]`,
+   con `TYPE=dependencies|ci|status` e `FORMAT=outline|mermaid`; `--repo` è
+   ammesso solo per `status`. `outline` usa la radice letterale `repository` e
+   due spazi UTF-8 per livello. `mermaid` usa `flowchart TD`, ID sequenziali
+   `n0001...` e label
+   tra doppi apici con escaping HTML di `&`, `"`, `<` e `>`; deriva dallo stesso
+   albero ordinato ed è semanticamente equivalente. JSON non è un formato
+   pubblico delle mappe. Le sostituzioni di label, in quest'ordine, sono
+   `&`→`&amp;`, `"`→`&quot;`, `<`→`&lt;`, `>`→`&gt;`.
+6. L'ordinamento è `LC_ALL=C`: scope, path, gruppo e nome per `dependencies`;
+   sequenza della sezione 9 per `ci`; semantica della sezione 7, priorità,
+   numero Issue e nome check per `status`. La visita è depth-first pre-order.
+   A parità di input, ogni formato produce output byte-identico tra esecuzioni.
+   Timestamp, path assoluti e dati ambientali sono vietati.
+7. Le preview predefinite sono ≤ 8 KiB e ≤ 100 righe. Prima del rendering viene
+   selezionato lo stesso prefisso di nodi per entrambi i formati e aggiunta una
+   foglia `omitted N`; l'omissione silenziosa è vietata. `--full` conserva lo
+   stesso ordine senza il limite preview ed è vietato nel README e nei job
+   summary.
+8. Il README usa esattamente le coppie di marker
+   `<!-- repository-map:dependencies:start -->` /
+   `<!-- repository-map:dependencies:end -->` e
+   `<!-- repository-map:ci:start -->` / `<!-- repository-map:ci:end -->`;
+   ciascun blocco contiene Mermaid e outline generati dallo stesso albero. Su
+   ogni PR,
+   `agent-config-check` rigenera le viste in area temporanea e le confronta
+   byte-per-byte. Marker mancanti, duplicati, malformati o contenuto obsoleto
+   causano FAIL; nessun file viene modificato. `CI Gate` resta l'unico required
+   check.
+9. Project Status Refresh pubblica le preview correnti di tutte e tre le mappe
+   nel job summary per `push`, create/delete di branch, dispatch manuale, PR
+   opened/synchronize/reopened/closed/ready-for-review/converted-to-draft/
+   edited/labeled/unlabeled, Issue opened/reopened/closed/labeled/unlabeled/
+   milestoned/demilestoned e completamento del workflow `CI`. `status` resta
+   soltanto nel job summary. Workflow e tool operano con permessi read-only e
+   non eseguono auto-commit o write-back.
+10. Copier trasferisce generatori, controlli, workflow e blocchi README in
+   modalità `standalone` e `mcp`. Ogni repository figlio deriva le mappe solo
+   dal proprio HEAD e stato GitHub; vietati riferimenti cablati al template e
+   persistenza dello stato live durante `copier update`.
+11. Le mappe non sostituiscono codice, manifest, workflow, Issue, PR, Checks,
+    DECISIONS.md o Project Status Digest. Nessuna mappa è fonte autorevole e
+    nessun file vietato dalla sezione 2 viene introdotto.

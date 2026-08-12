@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "suite": "template-v1.1",
+  "suite": "template-v1.2",
   "cases": [
     "ACC-01",
     "ACC-02",
@@ -24,6 +24,12 @@
     "ACC-20",
     "ACC-21",
     "ACC-22",
-    "ACC-23"
+    "ACC-23",
+    "ACC-24",
+    "ACC-25",
+    "ACC-26",
+    "ACC-27",
+    "ACC-28",
+    "ACC-29"
   ]
 }

@@ -1,4 +1,4 @@
-# V1.1 Acceptance Verification
+# V1.2 Acceptance Verification
 
 Verification baseline: `origin/main` after V1 release. Local scripts are under
 `acceptance/scripts/`; they do not write to GitHub and use temporary fixture
@@ -29,6 +29,12 @@ repositories where applicable.
 | ACC-21 | Yes | PASS | Bootstrap rerun against the initialized disposable repository refused safely because `.git` already existed. |
 | ACC-22 | Yes | PASS | Disposable private-repository bootstrap returned the expected GitHub Free Ruleset 403 and failed closed without bypassing protection. |
 | ACC-23 | Yes | PASS | Disposable PR #11 merged with squash; CI run `31430060761` passed, post-merge `label-sync` run `31430296006` passed, and canonical labels plus `acceptance:extra` were present. |
+| ACC-24 | No | NOT RUN | Implementation and evidence pending; no claim. |
+| ACC-25 | No | NOT RUN | Implementation and evidence pending; no claim. |
+| ACC-26 | No | NOT RUN | Implementation and evidence pending; no claim. |
+| ACC-27 | No | NOT RUN | Implementation and evidence pending; no claim. |
+| ACC-28 | No | NOT RUN | Implementation and evidence pending; no claim. |
+| ACC-29 | No | NOT RUN | Implementation and Copier evidence pending; no claim. |
 
 ## Local Commands
 
