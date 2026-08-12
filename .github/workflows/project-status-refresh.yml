@@ -18,8 +18,10 @@ permissions:
   statuses: read
 
 concurrency:
-  group: project-status-refresh
-  cancel-in-progress: true
+  group: >-
+    project-status-refresh-${{ github.event_name == 'pull_request' &&
+    format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   refresh:
@@ -37,4 +39,12 @@ jobs:
       - name: Generate current Project Status
         env:
           GH_TOKEN: ${{ github.token }}
-        run: tools/project-status/project-status md >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          for attempt in 1 2 3; do
+            if digest="$(tools/project-status/project-status md)"; then
+              printf '%s\n' "$digest" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            (( attempt < 3 )) || exit 1
+            sleep "$((attempt * 5))"
+          done

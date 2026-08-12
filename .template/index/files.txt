@@ -66,6 +66,12 @@
 ./acceptance/cases/ACC-21.md
 ./acceptance/cases/ACC-22.md
 ./acceptance/cases/ACC-23.md
+./acceptance/cases/ACC-24.md
+./acceptance/cases/ACC-25.md
+./acceptance/cases/ACC-26.md
+./acceptance/cases/ACC-27.md
+./acceptance/cases/ACC-28.md
+./acceptance/cases/ACC-29.md
 ./acceptance/cases/manifest.json
 ./acceptance/config.json
 ./acceptance/reports/.gitkeep

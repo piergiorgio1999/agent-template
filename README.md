@@ -47,7 +47,7 @@ BOOTSTRAP_VISIBILITY=private \
   configurazione Dependabot/Ruleset.
 - `tools/`: i quattro tool custom e librerie condivise.
 - `checks/`: checker per Shell, Go, Python, Rust, TypeScript e Swift.
-- `acceptance/`: contratti ACC-01..23 e report di verifica.
+- `acceptance/`: contratti ACC-01..29 e report di verifica.
 - `template-fixtures/`: manifest minimi per testare il rilevamento dei linguaggi.
 - `docs/`: architettura, bootstrap, validazione e release.
 - `config/`, `schemas/`, `.template/`, `release/`: metadati e documentazione
@@ -94,7 +94,7 @@ conflitti seguendo [`SPEC-V1.md`](SPEC-V1.md).
 
 ## Verifica Acceptance
 
-I 23 casi sono elencati in [`acceptance/cases/`](acceptance/cases/) e il report
+I 29 casi sono elencati in [`acceptance/cases/`](acceptance/cases/) e il report
 operativo è [`acceptance/VERIFICATION.md`](acceptance/VERIFICATION.md).
 I test locali possono essere eseguiti con:
 

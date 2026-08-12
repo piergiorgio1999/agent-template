@@ -139,3 +139,28 @@ decisione "Esecuzione SwiftPM e Xcode separata su macOS": `Package.swift`
 abilita SwiftPM; `*.xcodeproj` o `*.xcworkspace` abilita Xcode; `*.swift` da
 solo non abilita un checker Swift. Un container Xcode rilevato senza
 `XCODE_SCHEME` è applicabile ma incompleto e fallisce chiuso, non è uno skip.
+
+## 2026-08-12 — Mappe derivate statiche e live del repository
+
+La V1.2 introduce tre viste gerarchiche read-only: dipendenze dichiarate,
+flusso operativo/CI verificabile e stato lavori GitHub.
+
+Le viste dipendenze e CI sono statiche rispetto all'HEAD, possono comparire
+soltanto in blocchi generati del README e sono protette da un controllo
+deterministico di freschezza. La vista dello stato è live, deriva dalle stesse
+fonti e semantiche di Project Status e non viene mai committata: il README
+rimanda al comando e al job summary corrente.
+
+Le mappe sono esposte da `project-status` nei formati testuali `outline` e
+`mermaid`; `agent-config-check` controlla i blocchi statici. Restano quindi
+esattamente quattro tool custom. Non vengono introdotti generatori LLM,
+servizi remoti, webhook, write-back o nuove fonti di verità.
+
+Questa separazione conserva GitHub come unica source of truth persistente e
+permette ai repository generati da Copier di ottenere le stesse viste senza
+riferimenti cablati al template. Sono escluse dalla V1.2 l'inferenza automatica
+del significato del codice, i call graph presunti e la topologia non
+dimostrabile con le fonti supportate. In particolare, la mappa CI rappresenta
+la sequenza contrattuale della SPEC e non pretende di estrarre la DAG YAML. La
+mappa dipendenze analizza soltanto manifest JSON esplicitamente supportati e
+segnala gli altri manifest riconosciuti come non disponibili.

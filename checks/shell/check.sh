@@ -18,4 +18,7 @@ if [[ -z "$files" ]]; then
     exit 0
 fi
 
-echo "$files" | xargs shellcheck
+if ! shellcheck_output="$(echo "$files" | xargs shellcheck 2>&1)"; then
+    printf '%s\n' 'severity: error' 'invariant: ShellCheck passes' 'reason: ShellCheck reported diagnostics' "evidence: $shellcheck_output" 'remediation: fix the reported shell diagnostics' >&2
+    exit 1
+fi
