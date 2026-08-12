@@ -107,11 +107,13 @@ status=0
 
 if [[ "$unclassified" -eq 1 ]]; then
     echo "❌ scope-guard: unclassified files present"
+    echo "scope-guard: ACTION add each unclassified path to exactly one scope in scope-map.json"
     status=1
 fi
 
 if [[ "$scope_count" -gt 1 && "$has_scope_exception" -eq 0 ]]; then
     echo "❌ scope-guard: multiple scopes touched"
+    echo "scope-guard: ACTION split the PR by scope or link one Issue authorized with scope:exception"
     status=1
 elif [[ "$scope_count" -gt 1 ]]; then
     echo "⚠️ scope-guard: scope:exception allows multiple scopes"

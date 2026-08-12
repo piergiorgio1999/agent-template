@@ -7,11 +7,13 @@ SCOPE_GUARD="$SCRIPT_DIR/scope-guard"
 pass=0
 fail=0
 
+last_output=""
 assert_exit() {
     local desc="$1" expected="$2"
     shift 2
     local actual=0
     "$@" >/tmp/scope-guard-test-out.$$ 2>&1 || actual=$?
+    last_output="$(cat /tmp/scope-guard-test-out.$$)"
     if [[ "$actual" -eq "$expected" ]]; then
         echo "ok - $desc"
         pass=$((pass + 1))
@@ -139,6 +141,7 @@ echo "y" > "$repo/checks/python/thing"
 git -C "$repo" add -A
 git -C "$repo" commit -q -m "two scopes"
 assert_exit "two functional scopes fails" 1 run_guard "$repo"
+grep -Fq 'ACTION split the PR by scope or link one Issue authorized with scope:exception' <<<"$last_output"
 rm -rf "$repo"
 
 # Case 3: two functional scopes with scope:exception -> pass
