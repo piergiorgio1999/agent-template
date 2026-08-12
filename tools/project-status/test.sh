@@ -16,10 +16,12 @@ jq -e '
   (.current_prs[0].pr == "#10") and
   (.current_prs[0].diagnosis == "PASS: checks complete") and
   ([.current_prs[] | select(.pr == "#20") | .diagnosis] | .[0] == "WAIT: external check incomplete") and
-  ([.current_prs[] | select(.pr == "#21") | .diagnosis] | .[0] == "WAIT: declared dependency is still open") and
-  ([.current_prs[] | select(.pr == "#21") | .issue] | .[0] == null) and
+  ([.current_prs[] | select(.pr == "#21") | .diagnosis] | .[0] == "WAIT: structured dependency is still open") and
+  ([.current_prs[] | select(.pr == "#21") | .issue] | .[0] == "#21") and
   ([.current_prs[] | select(.pr == "#21") | .dependencies[0].number] | .[0] == 10) and
-  ([.current_prs[] | select(.pr == "#21") | .dependencies[0].source] | .[0] == "declared in PR body") and
+  ([.current_prs[] | select(.pr == "#21") | .dependencies[0].source] | .[0] == "Issue #21 blocked by Issue #2") and
+  ([.current_prs[] | select(.pr == "#22") | .diagnosis] | .[0] == "WAIT: no checks visible") and
+  ([.current_prs[] | select(.pr == "#22") | .issue] | .[0] == null) and
   ([.current_prs[] | .pr] | length == (unique | length)) and
   ((.current | index("#6 Blocked issue")) | not) and
   ((.current | index("#7 Needs attention")) | not) and
@@ -30,6 +32,7 @@ jq -e '
   (.attention | index("#7 Needs attention")) and
   (.attention | index("PR #11 Conflicting issue 5")) and
   (.attention | index("PR #13 Attention issue 2")) and
+  (.attention | index("PR #14 Action required")) and
   ((.attention | index("PR #12 Blocked issue 6")) | not) and
   (.progress.features[0].closed == 1) and
   (.progress.features[0].total == 2)
@@ -46,6 +49,7 @@ jq -e '
 ' <<<"$diagnose_json" >/dev/null
 
 live_json="$(PATH="$DIR/tests/fake-bin:$PATH" "$DIR/project-status" diagnose --all json)"
+live_text="$(PATH="$DIR/tests/fake-bin:$PATH" "$DIR/project-status" diagnose --all md)"
 jq -e '
   ([.current_prs[] | select(.pr == "#130") | .diagnosis][0] == "PASS: checks complete") and
   ([.current_prs[] | select(.pr == "#130") | .checks[]] == ["CI Gate 🟢 success"]) and
@@ -57,15 +61,15 @@ jq -e '
   ([.ci_diagnostics[] | select(.pr == 131)][0].evidence | length > 1) and
   ([.ci_diagnostics[] | select(.pr == 131)][0].affected_paths == [".github/workflows/example.yml"]) and
   ([.ci_diagnostics[] | select(.pr == 131)][0].location == "./.github/workflows/example.yml:3:1") and
-  ([.ci_diagnostics[] | select(.pr == 131)][0].escalation == "FIX: address the reported failure") and
-  ([.current_prs[] | select(.pr == "#131")][0].possible_dependencies[0].target == 130) and
-  ([.current_prs[] | select(.pr == "#131")][0].possible_dependencies[0].source == "Issue #31 comment") and
+  ([.ci_diagnostics[] | select(.pr == 131)][0].escalation | startswith("INSUFFICIENT:")) and
+  ([.current_prs[] | select(.pr == "#131")][0].dependencies[0].number == 130) and
+  ([.current_prs[] | select(.pr == "#131")][0].dependencies[0].source == "Issue #31 blocked by Issue #30") and
+  ([.current_prs[] | select(.pr == "#131")][0].related[0].target == 130) and
+  ([.current_prs[] | select(.pr == "#131")][0].diagnosis == "WAIT: structured dependency is still open") and
   ([.current_prs[] | select(.pr == "#132")][0].issue == null) and
   ([.current_prs[] | select(.pr == "#132")][0].declared_closing_refs == [999]) and
   ([.current_prs[] | select(.pr == "#132")][0].recognized_closing_refs == []) and
-  ([.current_prs[] | select(.pr == "#132")][0].possible_dependencies | length == 1) and
-  ([.current_prs[] | select(.pr == "#132")][0].possible_dependencies[0].target == 130) and
-  ([.current_prs[] | select(.pr == "#132")][0].possible_dependencies[0].head == "abc123") and
+  ([.current_prs[] | select(.pr == "#132")][0].related == []) and
   ([.ci_diagnostics[] | select(.pr == 132)] | length == 1) and
   ([.ci_diagnostics[] | select(.pr == 132)][0].error == "linking: exactly one closing issue reference is required") and
   ([.ci_diagnostics[] | select(.pr == 132)][0].escalation == "FIX: address the reported failure")
@@ -81,8 +85,9 @@ if grep -Fq '#10 Implements issue 2' <<<"$targeted_text"; then
   echo "targeted digest unexpectedly included an unselected PR" >&2
   exit 1
 fi
-grep -Fq 'Confirmed: PR #10 [OPEN] — declared in PR body' <<<"$text"
-grep -Fq '#21 Unlinked PR (no closing Issue)' <<<"$text"
+grep -Fq 'DEPENDS-ON: PR #10 [OPEN] — Issue #21 blocked by Issue #2' <<<"$text"
+grep -Fq '#22 Unlinked PR (no closing Issue)' <<<"$text"
+grep -Fq 'RELATED: PR #130 [OPEN] — modifies failure path .github/workflows/example.yml' <<<"$live_text"
 bytes="$(printf '%s' "$text" | wc -c | tr -d ' ')"
 lines="$(printf '%s\n' "$text" | wc -l | tr -d ' ')"
 (( bytes <= 8192 ))
