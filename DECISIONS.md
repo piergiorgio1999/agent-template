@@ -164,3 +164,20 @@ dimostrabile con le fonti supportate. In particolare, la mappa CI rappresenta
 la sequenza contrattuale della SPEC e non pretende di estrarre la DAG YAML. La
 mappa dipendenze analizza soltanto manifest JSON esplicitamente supportati e
 segnala gli altri manifest riconosciuti come non disponibili.
+
+## 2026-08-12 — Dependabot configurato solo sui manifest reali
+
+I job Dependabot per npm, pip, cargo e gomod fallivano perché `directory: "/"`
+non corrispondeva a nessun manifest reale nella root del repository: i
+manifest npm effettivi vivono in `mcp/` e `checks/typescript/`, mentre i file
+`Cargo.toml`, `go.mod` e `pyproject.toml` esistono solo come placeholder in
+`template-fixtures/` (usati dai test di detection, non da codice reale).
+
+`dependabot.yml` ora punta soltanto alle directory con manifest reali (`/mcp`
+e `/checks/typescript` per npm, oltre a `github-actions` sulla root). Gli
+ecosistemi pip, cargo e gomod restano non configurati finché non compare un
+manifest reale al di fuori di `template-fixtures/`: questo è il filtro
+deterministico che tiene un ecosistema "in standby" — nessuna configurazione,
+nessun job, nessun fallimento — finché non c'è effettivamente qualcosa da
+aggiornare. Non viene introdotto alcun trigger custom: resta lo scheduling
+nativo di Dependabot, applicato solo dove è applicabile.
