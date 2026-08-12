@@ -21,6 +21,7 @@
 ./.github/workflows/ci.yml
 ./.github/workflows/label-sync.yml
 ./.github/workflows/project-status-refresh.yml
+./.github/workflows/scope-exception-sync.yml
 ./.github/workflows/scorecard.yml
 ./.gitignore
 ./.gitleaks.toml
