@@ -2,7 +2,7 @@ name: Scope Exception Sync
 
 on:
   pull_request:
-    types: [opened, reopened, edited]
+    types: [opened, reopened, edited, synchronize, labeled, unlabeled]
 
 permissions:
   issues: read
