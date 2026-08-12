@@ -5,15 +5,8 @@ FIXTURES="$(cd "$(dirname "$0")/../live" && pwd)"
 
 case "$1 $2" in
     "pr list") cat "$FIXTURES/prs.json" ;;
-    "pr view")
-        if [[ " $* " == *" --json files "* ]]; then
-            jq --argjson number "$3" '[.[] | select(.number == $number) | .files[]?]' "$FIXTURES/prs.json"
-        else
-            jq --argjson number "$3" '.[] | select(.number == $number) | {number,headRefOid,closingIssuesReferences,comments:(.comments // [])}' "$FIXTURES/prs.json"
-        fi
-        ;;
+    "pr view") jq --argjson number "$3" '[.[] | select(.number == $number) | .files[]?]' "$FIXTURES/prs.json" ;;
     "issue list") cat "$FIXTURES/issues.json" ;;
-    "issue view") jq --argjson number "$3" '.[] | select(.number == $number) | {number,comments:(.comments // [])}' "$FIXTURES/issues.json" ;;
     "repo view") printf '%s\n' 'fixture/live-repository' ;;
     "run list")
         echo "run list must not be used for diagnostics" >&2

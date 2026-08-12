@@ -61,9 +61,7 @@ run_gh() {
         case "$1" in
             issues) cat "$PROJECT_STATUS_MOCK_DIR/issues.json" ;;
             prs) cat "$PROJECT_STATUS_MOCK_DIR/prs.json" ;;
-            pr_detail) jq --argjson number "$2" '.[] | select(.number == $number) | {number,headRefOid,closingIssuesReferences,comments:(.comments // [])}' "$PROJECT_STATUS_MOCK_DIR/prs.json" ;;
             pr_files) jq --argjson number "$2" '[.[] | select(.number == $number) | .files[]?]' "$PROJECT_STATUS_MOCK_DIR/prs.json" ;;
-            issue_detail) jq --argjson number "$2" '.[] | select(.number == $number) | {number,comments:(.comments // [])}' "$PROJECT_STATUS_MOCK_DIR/issues.json" ;;
             repo) printf '%s\n' "${PROJECT_STATUS_MOCK_REPOSITORY:-fixture/repository}" ;;
         esac
         return
@@ -71,9 +69,7 @@ run_gh() {
     case "$1" in
         issues) gh_with_repo issue list --state all --limit 1000 --json number,title,state,labels,milestone,subIssues,blockedBy,blocking ;;
         prs) gh_with_repo pr list --state all --limit 1000 --json number,title,state,labels,closingIssuesReferences,statusCheckRollup,mergeStateStatus,headRefOid,headRefName,baseRefName,body ;;
-        pr_detail) gh_with_repo pr view "$2" --json number,headRefOid,closingIssuesReferences,comments ;;
         pr_files) gh_with_repo pr view "$2" --json files --jq '[.files[].path]' ;;
-        issue_detail) gh_with_repo issue view "$2" --json number,comments ;;
         repo)
             if [[ -n "$REPO" ]]; then
                 gh repo view "$REPO" --json nameWithOwner --jq '.nameWithOwner'
@@ -132,35 +128,6 @@ if [[ "$MODE" == "diagnose" ]]; then
 else
     target_prs_json="$(jq '[.[] | select(.state == "OPEN") | .number] | unique | sort' <<<"$prs_json")"
 fi
-
-possible_dependencies_file="$tmpdir/possible-dependencies.jsonl"
-: >"$possible_dependencies_file"
-extract_dependency_markers() {
-    local detail="$1" pr_number="$2" source="$3" head_oid="$4"
-    jq -c --argjson pr "$pr_number" --arg source "$source" --arg head_oid "$head_oid" '
-      .comments[]? |
-      select(((.authorAssociation // "") | IN("OWNER","MEMBER","COLLABORATOR")) or ((.author.login // "") == "github-actions")) |
-      . as $comment |
-      (($comment.body // "") | match("project-status:dependency[[:space:]]+depends-on=([0-9]+)(?:[[:space:]]+head=([0-9a-fA-F]+))?"; "g")) as $match |
-      ($match.captures[0].string | tonumber) as $target |
-      ($match.captures[1].string // null) as $marker_head |
-      select($marker_head == null or ($head_oid | startswith($marker_head))) |
-      {pr:$pr,target:$target,source:$source,url:($comment.url // null),head:($marker_head // "unbound"),confidence:"possible"}
-    ' <<<"$detail" >>"$possible_dependencies_file"
-}
-
-if [[ "$MODE" == "diagnose" ]]; then
-    while IFS= read -r pr_number; do
-        pr_detail="$(run_gh pr_detail "$pr_number")"
-        head_oid="$(jq -r '.headRefOid // ""' <<<"$pr_detail")"
-        extract_dependency_markers "$pr_detail" "$pr_number" "PR #$pr_number comment" "$head_oid"
-        while IFS= read -r issue_number; do
-            issue_detail="$(run_gh issue_detail "$issue_number")"
-            extract_dependency_markers "$issue_detail" "$pr_number" "Issue #$issue_number comment" "$head_oid"
-        done < <(jq -r '.closingIssuesReferences[]?.number' <<<"$pr_detail")
-    done < <(jq -r '.[]' <<<"$target_prs_json")
-fi
-possible_dependencies="$(jq -s 'unique_by([.pr,.target,.source,.url])' "$possible_dependencies_file")"
 
 diagnostics='[]'
 if [[ "$MODE" == "diagnose" ]]; then
@@ -246,7 +213,9 @@ if [[ "$MODE" == "diagnose" ]]; then
                   } | sed 's|^\./||' | sort -u | jq -Rsc 'split("\n") | map(select(length > 0))'
                 )"
                 if [[ "$error" == "failed step; inspect targeted job log" ]]; then
-                    escalation="FIX: inspect the failed step; load the targeted job log only if this digest is insufficient"
+                    escalation="INSUFFICIENT: failed-step diagnostic was not recognized"
+                elif [[ "$job_name" == "security" && "$error" == *'error['* ]]; then
+                    escalation="INSUFFICIENT: security finding identifies rule and source span, not a safe remediation"
                 else
                     escalation="FIX: address the reported failure"
                 fi
@@ -278,15 +247,14 @@ if [[ "$MODE" == "diagnose" ]]; then
     fi
 fi
 
-file_relations="$(jq -n --argjson diagnostics "$diagnostics" --argjson pr_files "$pr_files" '
+related_prs="$(jq -n --argjson diagnostics "$diagnostics" --argjson pr_files "$pr_files" '
   [$diagnostics[] as $diagnostic |
    ($diagnostic.affected_paths // [])[] as $path |
    $pr_files[] |
    select(.pr != $diagnostic.pr and (.files | index($path))) |
-   {pr:$diagnostic.pr,target:.pr,source:("modifies failure path " + $path),url:null,head:"unbound",confidence:"possible"}]
-  | unique_by([.pr,.target,.source])
+   {pr:$diagnostic.pr,target:.pr,reason:("modifies failure path " + $path)}]
+  | unique_by([.pr,.target,.reason])
 ')"
-possible_dependencies="$(jq -n --argjson markers "$possible_dependencies" --argjson files "$file_relations" '$markers + $files | unique_by([.pr,.target,.source,.url])')"
 
 repo="$(run_gh repo)"
 generated_at="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -298,8 +266,7 @@ digest="$(jq -n \
     --slurpfile prs_file "$tmpdir/prs.json" \
     --argjson issue_features "${issue_features:-true}" \
     --argjson diagnostics "$diagnostics" \
-    --argjson possible_dependencies "$possible_dependencies" \
-    --argjson pr_files "$pr_files" \
+    --argjson related_prs "$related_prs" \
     --argjson target_prs "$target_prs_json" \
     --argjson diagnose "$([[ "$MODE" == "diagnose" ]] && echo true || echo false)" '
   ($issues_file[0]) as $issues |
@@ -314,8 +281,8 @@ digest="$(jq -n \
   def linked_prs($issue): [$prs[] | select(.state == "OPEN") | select([.closingIssuesReferences[]?.number] | index($issue))];
   def is_blocked: ((blocked_by | length) > 0) or ((labels | index("status:blocked")) != null);
   def issue_attention: ((labels | index("status:attention")) != null);
-  def check_failed: ([((.statusCheckRollup // []) | current_checks[]) | (.conclusion // .state // "") | ascii_upcase | IN("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT")] | any);
-  def attention($pr): ((labels | index("status:attention")) != null) or ($pr.mergeStateStatus == "CONFLICTING") or ($pr.check_failed);
+  def check_failed: ([((.statusCheckRollup // []) | current_checks[]) | (.conclusion // .state // "") | ascii_upcase | IN("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED")] | any);
+  def attention($pr): ((labels | index("status:attention")) != null) or ($pr.mergeStateStatus == "CONFLICTING") or ($pr | check_failed);
   def failed_outcome: ((.conclusion // .state // "") | ascii_downcase) as $outcome |
     $outcome == "failure" or $outcome == "error" or $outcome == "cancelled" or $outcome == "timed_out" or $outcome == "action_required";
   def pending_outcome: (((.status // "") | ascii_downcase) != "completed") and ((.conclusion // "") == "" or .conclusion == null);
@@ -334,6 +301,7 @@ digest="$(jq -n \
     . as $check |
     (($check.conclusion // $check.state // "") | ascii_downcase) as $outcome |
     if $outcome == "success" then "🟢"
+    elif ($check | pending_outcome) then "🟡"
     elif ($outcome == "skipped" or $outcome == "neutral" or $outcome == "not_applicable") then "⚪"
     else "🔴" end;
   def check_label:
@@ -341,6 +309,8 @@ digest="$(jq -n \
     ($check | check_icon) as $icon |
     (($check.name // $check.context // "unnamed") + " " + $icon + " " + (($check.conclusion // $check.state // "unknown") | ascii_downcase));
   def pr_state($number): first($prs[] | select(.number == $number) | .state) // "UNKNOWN";
+  def diagnostic_insufficient($number):
+    first($diagnostics[] | select(.pr == $number and (.escalation | startswith("INSUFFICIENT:"))) | .escalation) // null;
   def declared_closing_refs:
     [(.body // "") |
       match("(?i)(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)[[:space:]:]+#(?<number>[0-9]+)"; "g") |
@@ -349,17 +319,21 @@ digest="$(jq -n \
     . as $pr |
     (([$prs[] | select(.state == "OPEN" and (.headRefName // "") != "" and .headRefName == ($pr.baseRefName // "")) |
         {type:"pr",number:.number,state:.state,source:"stacked base branch"}]) +
-     ([($pr.body // "") | scan("(?i)depends[[:space:]]+on[[:space:]]+#([0-9]+)") | .[0] | tonumber] |
-        map(. as $number | {type:"pr",number:$number,state:pr_state($number),source:"declared in PR body"})) +
      ([$pr.closingIssuesReferences[]?.number as $issue_number |
-        $issues[] | select(.number == $issue_number) | blocked_by[]? |
-        {type:"issue",number:.number,state:(.state // "UNKNOWN"),source:("blocking relation of Issue #" + ($issue_number|tostring))}])) |
+        $issues[] | select(.number == $issue_number) | blocked_by[]? as $blocker |
+        (linked_prs($blocker.number)) as $blocking_prs |
+        if ($blocking_prs | length) > 0 then
+          $blocking_prs[] | {type:"pr",number:.number,state:.state,
+            source:("Issue #" + ($issue_number|tostring) + " blocked by Issue #" + ($blocker.number|tostring))}
+        else
+          {type:"issue",number:$blocker.number,state:($blocker.state // "UNKNOWN"),
+            source:("blocking relation of Issue #" + ($issue_number|tostring))}
+        end])) |
     unique_by([.type,.number,.source]);
-  def possible_dependencies:
+  def related:
     . as $pr |
-    [$possible_dependencies[] | select(.pr == $pr.number) |
-      . + {type:"pr",state:pr_state(.target)}] |
-    unique_by([.target,.source,.url]);
+    [$related_prs[] | select(.pr == $pr.number) | . + {state:pr_state(.target)}] |
+    unique_by([.target,.reason]);
   def pr_diagnosis:
     if ((.statusCheckRollup // []) | current_checks | length) == 0 then "WAIT: no checks visible"
     elif ([((.statusCheckRollup // []) | current_checks[]) | . as $check | select(((($check.status // "") | ascii_downcase) != "completed") and (($check.conclusion // "") == "" or $check.conclusion == null))] | length) > 0 then "WAIT: external check incomplete"
@@ -378,16 +352,18 @@ digest="$(jq -n \
   ([$prs[] | select(.state == "OPEN") | select(.number as $number | $target_prs | index($number)) | . as $pr |
     ([.closingIssuesReferences[]?.number] | first // null) as $issue_number |
     ($pr | confirmed_dependencies) as $confirmed_dependencies |
-    ($pr | possible_dependencies) as $possible_dependencies_for_pr |
+    ($pr | related) as $related_for_pr |
     ($pr | declared_closing_refs) as $declared_closing_refs |
     ([.closingIssuesReferences[]?.number] | unique | sort) as $recognized_closing_refs |
     {issue: (if $issue_number == null then null else "#" + ($issue_number|tostring) end),
      pr: ("#" + (.number|tostring)), title: .title,
      checks: [((.statusCheckRollup // []) | digest_checks[]) | check_label],
      declared_closing_refs:$declared_closing_refs, recognized_closing_refs:$recognized_closing_refs,
-     dependencies:$confirmed_dependencies, possible_dependencies:$possible_dependencies_for_pr,
+     dependencies:$confirmed_dependencies, related:$related_for_pr,
      diagnosis: (if any($confirmed_dependencies[]; .state == "OPEN")
-       then "WAIT: declared dependency is still open" else ($pr | pr_diagnosis) end)}]
+       then "WAIT: structured dependency is still open"
+       elif diagnostic_insufficient($pr.number) != null then diagnostic_insufficient($pr.number)
+       else ($pr | pr_diagnosis) end)}]
    | sort_by(.pr | ltrimstr("#") | tonumber)) as $current_prs |
   ($issues | map(select(.state == "OPEN") | select(is_blocked) | issue_text)) as $blocked |
   ($issues | map(select(.state == "OPEN") | select(is_blocked) | .number)) as $blocked_numbers |
@@ -403,11 +379,11 @@ else
     markdown="$(jq -r '
       def list_or_none: if length == 0 then "none" else join("\n") end;
       def dependency_lines:
-        if ((.dependencies | length) == 0 and (.possible_dependencies | length) == 0) then ["Dependencies: none declared"]
-        else ([.dependencies[] | "- Confirmed: \(.type | ascii_upcase) #\(.number) [\(.state)] — \(.source)"] +
-              [.possible_dependencies[] | "- Possible: PR #\(.target) [\(.state)] — \(.source)" +
-                (if (.source | startswith("modifies failure path ")) then "" elif .head == "unbound" then " (head unbound)" else " (current head)" end)])
+        if (.dependencies | length) == 0 then ["DEPENDS-ON: none"]
+        else [.dependencies[] | "DEPENDS-ON: \(.type | ascii_upcase) #\(.number) [\(.state)] — \(.source)"]
         end;
+      def related_lines:
+        [.related[] | "RELATED: PR #\(.target) [\(.state)] — \(.reason)"];
       def linking_lines:
         if any(.checks[]?; startswith("linking ")) then
           ["Closing references:",
@@ -420,7 +396,7 @@ else
         ([$pr.pr + " " + $pr.title + (if $pr.issue then " (" + $pr.issue + ")" else " (no closing Issue)" end),
           "", (if ($pr.checks | length) == 0 then "no checks visible" else ($pr.checks | join("\n")) end), ""] +
          ($pr | linking_lines) + (if ($pr | linking_lines | length) > 0 then [""] else [] end) +
-         ($pr | dependency_lines) + ["", $pr.diagnosis]) | join("\n");
+         ($pr | dependency_lines) + ($pr | related_lines) + ["", $pr.diagnosis]) | join("\n");
       (["# Project Status", "", "Repository: \(.repository)", "Generated: \(.generated_at)", "Phase: \(.phase)", "", "## Progress", (.progress | tostring), "", "## Current", (.current | list_or_none), "", "## Current PR", (if (.current_prs | length) == 0 then "none" else (.current_prs[] | pr_block) end)] + (if has("ci_diagnostics") then ["", "## CI Diagnostics", (if (.ci_diagnostics | length) == 0 then "none" else (.ci_diagnostics[] | ["PR #\(.pr) — \(.workflow)", "- Job: \(.job)", "- Step: \(.step)", "- Error: \(.error)", (if .location then "- Location: \(.location)" else empty end), (if ((.evidence // []) | length) > 1 then "- Direct evidence:\n" + ([.evidence[] | "  - " + .] | join("\n")) else empty end), "- Escalation: \(.escalation)"] | join("\n")) end)] else [] end) + ["", "## Next", (.next | list_or_none), "", "## Blocked", (.blocked | list_or_none), "", "## Attention", (.attention | list_or_none)]) | join("\n")
     ' <<<"$digest")"
     if [[ "$MODE" == "diagnose" ]]; then

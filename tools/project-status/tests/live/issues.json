@@ -1,6 +1,4 @@
 [
   {"number":30,"title":"Superseded failure","state":"OPEN","labels":[],"milestone":null,"subIssues":[],"blockedBy":[],"blocking":[]},
-  {"number":31,"title":"Current Zizmor failure","state":"OPEN","labels":[],"milestone":null,"subIssues":[],"blockedBy":[],"blocking":[],"comments":[
-    {"author":{"login":"trusted-agent"},"authorAssociation":"OWNER","body":"<!-- project-status:dependency depends-on=130 -->","url":"https://example.invalid/issues/31#comment"}
-  ]}
+  {"number":31,"title":"Current Zizmor failure","state":"OPEN","labels":[],"milestone":null,"subIssues":[],"blockedBy":[{"number":30,"state":"OPEN"}],"blocking":[]}
 ]
