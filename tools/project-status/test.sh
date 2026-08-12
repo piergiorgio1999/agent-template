@@ -40,6 +40,19 @@ jq -e '
   .ci_diagnostics[1].location == null
 ' <<<"$diagnose_json" >/dev/null
 
+live_json="$(PATH="$DIR/tests/fake-bin:$PATH" "$DIR/project-status" diagnose json)"
+jq -e '
+  ([.current_prs[] | select(.pr == "#130") | .diagnosis][0] == "PASS: checks complete") and
+  ([.current_prs[] | select(.pr == "#130") | .checks[]] == ["CI Gate 🟢 success"]) and
+  ([.ci_diagnostics[] | select(.pr == 130)] | length == 0) and
+  ([.ci_diagnostics[] | select(.pr == 131)] | length == 1) and
+  ([.ci_diagnostics[] | select(.pr == 131)][0].error | contains("error[dangerous-triggers]")) and
+  ([.ci_diagnostics[] | select(.pr == 131)][0].error | contains("pull_request_target")) and
+  ([.ci_diagnostics[] | select(.pr == 131)][0].error | contains("Process completed with exit code") | not) and
+  ([.ci_diagnostics[] | select(.pr == 131)][0].location == "./.github/workflows/example.yml:3:1") and
+  ([.ci_diagnostics[] | select(.pr == 131)][0].escalation == "FIX: address the reported failure")
+' <<<"$live_json" >/dev/null
+
 text="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" md)"
 diagnose_text="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" diagnose md)"
 grep -Fq '## CI Diagnostics' <<<"$diagnose_text"

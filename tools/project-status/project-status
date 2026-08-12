@@ -87,18 +87,50 @@ if [[ "$MODE" == "diagnose" ]]; then
     else
         diagnostics_file="$tmpdir/diagnostics.jsonl"
         : >"$diagnostics_file"
-        while IFS=$'\t' read -r pr_number head_oid; do
-            [[ -n "$head_oid" ]] || continue
-            run="$(gh_with_repo run list --commit "$head_oid" --status failure --limit 1 --json databaseId,name,url --jq '.[0] // empty')"
+        # jq variables in the nested filter are intentionally protected from Bash expansion.
+        # shellcheck disable=SC2016
+        while IFS=$'\t' read -r pr_number run_id; do
+            [[ -n "$run_id" ]] || continue
+            run="$(gh_with_repo run view "$run_id" --json name,url)"
             [[ -n "$run" ]] || continue
-            run_id="$(jq -r '.databaseId' <<<"$run")"
             while IFS=$'\t' read -r job_id job_name step_name; do
-                job_log="$(gh_with_repo run view "$run_id" --job "$job_id" --log 2>/dev/null || true)"
-                error_line="$(printf '%s\n' "$job_log" | grep -E -m1 '(^|[[:space:]])(error:|ERROR|Error:|fatal:|FAIL)' || true)"
-                error="$(printf '%s\n' "$error_line" | awk -F '\t' '{if (NF >= 4) {for (i=4; i<=NF; i++) printf "%s%s", (i>4 ? FS : ""), $i; print ""} else print}' | cut -c1-300)"
+                job_log="$(gh_with_repo run view "$run_id" --job "$job_id" --log-failed 2>/dev/null || true)"
+                clean_log="$(printf '%s\n' "$job_log" | awk '
+                    BEGIN { esc = sprintf("%c", 27) }
+                    {
+                        sub(/\r$/, "")
+                        gsub(esc "\\[[0-?]*[ -/]*[@-~]", "")
+                        gsub(esc "[@-_]", "")
+                        gsub("\\^\\[\\[[0-?]*[ -/]*[@-~]", "")
+                        print
+                    }
+                ')"
+                messages="$(printf '%s\n' "$clean_log" | awk -F '\t' '
+                    NF >= 3 {
+                        message = $3
+                        for (i=4; i<=NF; i++) message = message FS $i
+                        sub(/^[^[:space:]]+[[:space:]]+/, "", message)
+                        print message
+                        next
+                    }
+                    { print }
+                ')"
+                error_line="$(printf '%s\n' "$messages" | grep -E -m1 'error\[[^]]+\]:|(^|[[:space:]])(error:|ERROR|Error:|fatal:|FAIL([:[:space:]]|$)|❌)' | grep -Ev 'Process completed with exit code' || true)"
+                error="$error_line"
+                if [[ "$error" == *'error['* ]]; then
+                    detail="$(printf '%s\n' "$messages" | grep -E -m1 'pull_request_target|workflow_call|workflow_run' || true)"
+                    if [[ -n "$detail" && "$error" != *"$detail"* ]]; then
+                        error="$error; $detail"
+                    fi
+                fi
+                error="$(printf '%s' "$error" | cut -c1-300)"
                 error="${error:-failed step; inspect targeted job log}"
-                location="$(printf '%s\n' "$error" | grep -Eo '[[:alnum:]_./-]+\.[[:alnum:]_+-]+:[0-9]+(:[0-9]+)?' | head -n1 || true)"
-                escalation="FIX: inspect the failed step; load the targeted job log only if this digest is insufficient"
+                location="$(printf '%s\n' "$messages" | grep -Eo '[[:alnum:]_./-]+\.[[:alnum:]_+-]+:[0-9]+(:[0-9]+)?' | head -n1 || true)"
+                if [[ "$error" == "failed step; inspect targeted job log" ]]; then
+                    escalation="FIX: inspect the failed step; load the targeted job log only if this digest is insufficient"
+                else
+                    escalation="FIX: address the reported failure"
+                fi
                 if [[ "$error" == *pending* || "$error" == *incomplete* ]]; then
                     escalation="WAIT: external check incomplete"
                 fi
@@ -107,8 +139,21 @@ if [[ "$MODE" == "diagnose" ]]; then
                     --arg location "$location" --arg url "$(jq -r '.url' <<<"$run")" --arg escalation "$escalation" \
                     '{pr:$pr,workflow:$workflow,job:$job,step:$step,error:$error,location:($location | if length > 0 then . else null end),url:$url,escalation:$escalation}' \
                     >>"$diagnostics_file"
-            done < <(gh_with_repo run view "$run_id" --json jobs --jq '.jobs[] | select(.conclusion == "failure") | [.databaseId,.name,([.steps[] | select(.conclusion == "failure") | .name][0] // "unknown")] | @tsv')
-        done < <(jq -r '.[] | select(.state == "OPEN") | select(any(.statusCheckRollup[]?; ((.conclusion // .state // "") | ascii_upcase) | IN("FAILURE","ERROR","CANCELLED","TIMED_OUT","ACTION_REQUIRED"))) | [.number,.headRefOid] | @tsv' <<<"$prs_json")
+            done < <(gh_with_repo run view "$run_id" --json jobs --jq '
+              [.jobs[] | select(.conclusion == "failure")] as $failed |
+              $failed[] |
+              select(.name != "CI Gate" or ([$failed[] | select(.name != "CI Gate")] | length) == 0) |
+              [.databaseId,.name,([.steps[] | select(.conclusion == "failure") | .name][0] // "unknown")] | @tsv
+            ')
+        done < <(jq -r '
+          def check_key: [(.workflowName // ""), (.name // .context // "unnamed")];
+          def current_checks: group_by(check_key) | map(sort_by(.startedAt // .completedAt // "") | last);
+          .[] | select(.state == "OPEN") | .number as $pr |
+          ((.statusCheckRollup // []) | current_checks[]) |
+          select(((.conclusion // .state // "") | ascii_upcase) | IN("FAILURE","ERROR","CANCELLED","TIMED_OUT","ACTION_REQUIRED")) |
+          (.detailsUrl // "" | capture("/actions/runs/(?<id>[0-9]+)")?.id) as $run_id |
+          select($run_id != null) | [$pr,$run_id] | @tsv
+        ' <<<"$prs_json" | sort -u)
         diagnostics="$(jq -s '.' "$diagnostics_file")"
     fi
 fi
@@ -130,11 +175,13 @@ digest="$(jq -n \
   def subissues: if (.subIssues | type) == "object" then (.subIssues.nodes // []) else (.subIssues // []) end;
   def blocked_by: if (.blockedBy | type) == "object" then (.blockedBy.nodes // []) else (.blockedBy // []) end;
   def priority: (labels | map(select(test("^priority:P[012]$"))) | first // "priority:none");
+  def check_key: [(.workflowName // ""), (.name // .context // "unnamed")];
+  def current_checks: group_by(check_key) | map(sort_by(.startedAt // .completedAt // "") | last);
   def issue_number: .number;
   def linked_prs($issue): [$prs[] | select(.state == "OPEN") | select([.closingIssuesReferences[]?.number] | index($issue))];
   def is_blocked: ((blocked_by | length) > 0) or ((labels | index("status:blocked")) != null);
   def issue_attention: ((labels | index("status:attention")) != null);
-  def check_failed: ([.statusCheckRollup[]? | (.conclusion // .state // "") | ascii_upcase | IN("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT")] | any);
+  def check_failed: ([((.statusCheckRollup // []) | current_checks[]) | (.conclusion // .state // "") | ascii_upcase | IN("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT")] | any);
   def attention($pr): ((labels | index("status:attention")) != null) or ($pr.mergeStateStatus == "CONFLICTING") or ($pr.check_failed);
   def check_icon:
     . as $check |
@@ -147,8 +194,8 @@ digest="$(jq -n \
     ($check | check_icon) as $icon |
     (($check.name // $check.context // "unnamed") + " " + $icon + " " + (($check.conclusion // $check.state // "unknown") | ascii_downcase));
   def pr_diagnosis:
-    if ([.statusCheckRollup[]? | . as $check | select(((($check.status // "") | ascii_downcase) != "completed") and (($check.conclusion // "") == "" or $check.conclusion == null))] | length) > 0 then "WAIT: external check incomplete"
-    elif ([.statusCheckRollup[]? | ((.conclusion // .state // "") | ascii_downcase) | select(. == "failure" or . == "error" or . == "cancelled" or . == "timed_out" or . == "action_required")] | length) > 0 then "FIX: check failure"
+    if ([((.statusCheckRollup // []) | current_checks[]) | . as $check | select(((($check.status // "") | ascii_downcase) != "completed") and (($check.conclusion // "") == "" or $check.conclusion == null))] | length) > 0 then "WAIT: external check incomplete"
+    elif ([((.statusCheckRollup // []) | current_checks[]) | ((.conclusion // .state // "") | ascii_downcase) | select(. == "failure" or . == "error" or . == "cancelled" or . == "timed_out" or . == "action_required")] | length) > 0 then "FIX: check failure"
     else "PASS: checks complete" end;
   def issue_text: ("#" + (.number|tostring) + " " + .title);
   def milestone_progress:
@@ -160,7 +207,7 @@ digest="$(jq -n \
   ($issues | map(select(.state == "CLOSED") | issue_text)) as $done |
   ($issues | map(select(.state == "OPEN") | select(is_blocked | not) | select(issue_attention | not) | select((linked_prs(.number) | length) > 0))) as $current_issues |
   ($current_issues | map(issue_text)) as $current |
-  ([$current_issues[] as $issue | linked_prs($issue.number)[] | {issue: ("#" + ($issue.number|tostring)), pr: ("#" + (.number|tostring)), checks: [.statusCheckRollup[]? | check_label], diagnosis: pr_diagnosis}]) as $current_prs |
+  ([$current_issues[] as $issue | linked_prs($issue.number)[] | {issue: ("#" + ($issue.number|tostring)), pr: ("#" + (.number|tostring)), checks: [((.statusCheckRollup // []) | current_checks[]) | check_label], diagnosis: pr_diagnosis}]) as $current_prs |
   ($issues | map(select(.state == "OPEN") | select(is_blocked) | issue_text)) as $blocked |
   ($issues | map(select(.state == "OPEN") | select(is_blocked) | .number)) as $blocked_numbers |
   ($issues | map(select(.state == "OPEN") | select(is_blocked | not) | select(issue_attention) | issue_text)) as $label_attention |
