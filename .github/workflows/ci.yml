@@ -32,6 +32,7 @@ jobs:
         run: |
           .github/ci-gate/test-state.sh
           .github/ci-gate/test-linking.sh
+          .github/ci-gate/test-project-status-refresh.sh
           checks/swift/test-detect.sh
 
   scope-guard:
