@@ -11,4 +11,7 @@ if ! command -v cargo >/dev/null 2>&1; then
     exit 0
 fi
 
-cargo clippy --all-targets --all-features -- -D warnings
+if ! clippy_output="$(cargo clippy --all-targets --all-features -- -D warnings 2>&1)"; then
+    printf '%s\n' 'severity: error' 'invariant: Clippy passes with warnings denied' 'reason: Clippy reported diagnostics' "evidence: $clippy_output" 'remediation: fix the reported Rust diagnostics' >&2
+    exit 1
+fi
