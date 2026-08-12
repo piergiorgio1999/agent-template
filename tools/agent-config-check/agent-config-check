@@ -40,8 +40,9 @@ check "comment locales contain all required messages" test "$locale_status" -eq 
 compare_versions() {
     local semver="$1" contract="$2"
     # Extract major.minor from both (X.Y from X.Y.Z or X.Y)
-    local semver_xy=$(echo "$semver" | cut -d. -f1,2)
-    local contract_xy=$(echo "$contract" | cut -d. -f1,2)
+    local semver_xy contract_xy
+    semver_xy="$(echo "$semver" | cut -d. -f1,2)"
+    contract_xy="$(echo "$contract" | cut -d. -f1,2)"
     [[ "$semver_xy" == "$contract_xy" ]]
 }
 
@@ -98,13 +99,23 @@ if [[ ! -f .template/index/files.txt ]]; then
 else
     # Verify index is up-to-date by comparing with git ls-files (if in a git repo)
     if git rev-parse --git-dir > /dev/null 2>&1; then
-        index_files=$(sort .template/index/files.txt | sed 's|^\./||')
-        git_files=$(git ls-files | grep -v '^\.template-only/' | sort)
+        index_file="$(mktemp)"
+        git_file="$(mktemp)"
+        trap 'rm -f "$index_file" "$git_file"' EXIT
+        sort .template/index/files.txt | sed 's|^\./||' > "$index_file"
+        git ls-files | grep -v '^\.template-only/' | sort > "$git_file"
 
-        if diff <(echo "$index_files") <(echo "$git_files") > /dev/null 2>&1; then
+        if diff -q "$index_file" "$git_file" > /dev/null 2>&1; then
             echo "✅ .template/index/files.txt is fresh and up-to-date"
         else
             echo "❌ .template/index/files.txt is stale or missing files"
+            while IFS= read -r path; do
+                [[ -n "$path" ]] && echo "agent-config-check: MISSING_FROM_INDEX $path"
+            done < <(comm -13 "$index_file" "$git_file")
+            while IFS= read -r path; do
+                [[ -n "$path" ]] && echo "agent-config-check: EXTRA_IN_INDEX $path"
+            done < <(comm -23 "$index_file" "$git_file")
+            echo "agent-config-check: ACTION regenerate .template/index/files.txt from tracked template files"
             status=1
         fi
     else
