@@ -6,8 +6,12 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 mkdir -p "$WORK/tools/lib" "$WORK/tools/agent-config-check" \
-    "$WORK/config/template/comment-locales"
+    "$WORK/config/template/comment-locales" "$WORK/.template/index" "$WORK/acceptance"
 cp "$ROOT/AGENTS.md" "$ROOT/CLAUDE.md" "$ROOT/DECISIONS.md" "$ROOT/TEMPLATE_VERSION" "$WORK/"
+cp "$ROOT/SPEC-V1.md" "$WORK/"
+cp "$ROOT/.template/template-manifest.json" "$WORK/.template/"
+cp "$ROOT/.template/index/files.txt" "$WORK/.template/index/"
+cp "$ROOT/acceptance/VERIFICATION.md" "$WORK/acceptance/"
 cp "$ROOT/scope-map.json" "$WORK/scope-map.json"
 cp "$ROOT/config/template/version.json" "$WORK/config/template/version.json"
 cp "$ROOT/config/template/comment-locales/"*.json \
