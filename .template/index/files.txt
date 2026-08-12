@@ -7,6 +7,7 @@
 ./.github/ci-gate/check-linking
 ./.github/ci-gate/check-state
 ./.github/ci-gate/test-linking.sh
+./.github/ci-gate/test-project-status-refresh.sh
 ./.github/ci-gate/test-state.sh
 ./.github/copilot-instructions.md
 ./.github/dependabot.yml
@@ -155,7 +156,11 @@
 ./tools/project-status/project-status
 ./tools/project-status/schema/status-schema.json
 ./tools/project-status/test.sh
+./tools/project-status/tests/fake-bin/gh
 ./tools/project-status/tests/fixtures/issues.json
+./tools/project-status/tests/live/issues.json
+./tools/project-status/tests/live/prs.json
+./tools/project-status/tests/live/run-200.json
 ./tools/project-status/tests/fixtures/prs.json
 ./tools/scope-guard/scope-guard
 ./tools/scope-guard/test.sh
