@@ -16,6 +16,11 @@ jq -e '
   (.current_prs[0].pr == "#10") and
   (.current_prs[0].diagnosis == "PASS: checks complete") and
   ([.current_prs[] | select(.pr == "#20") | .diagnosis] | .[0] == "WAIT: external check incomplete") and
+  ([.current_prs[] | select(.pr == "#21") | .diagnosis] | .[0] == "WAIT: declared dependency is still open") and
+  ([.current_prs[] | select(.pr == "#21") | .issue] | .[0] == null) and
+  ([.current_prs[] | select(.pr == "#21") | .dependencies[0].number] | .[0] == 10) and
+  ([.current_prs[] | select(.pr == "#21") | .dependencies[0].source] | .[0] == "declared in PR body") and
+  ([.current_prs[] | .pr] | length == (unique | length)) and
   ((.current | index("#6 Blocked issue")) | not) and
   ((.current | index("#7 Needs attention")) | not) and
   (.blocked | index("#3 Blocked work")) and
@@ -30,7 +35,7 @@ jq -e '
   (.progress.features[0].total == 2)
 ' <<<"$json" >/dev/null
 
-diagnose_json="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" diagnose json)"
+diagnose_json="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" diagnose --all json)"
 jq -e '
   (.ci_diagnostics | length) == 2 and
   .ci_diagnostics[0].pr == 11 and
@@ -40,7 +45,7 @@ jq -e '
   .ci_diagnostics[1].location == null
 ' <<<"$diagnose_json" >/dev/null
 
-live_json="$(PATH="$DIR/tests/fake-bin:$PATH" "$DIR/project-status" diagnose json)"
+live_json="$(PATH="$DIR/tests/fake-bin:$PATH" "$DIR/project-status" diagnose --all json)"
 jq -e '
   ([.current_prs[] | select(.pr == "#130") | .diagnosis][0] == "PASS: checks complete") and
   ([.current_prs[] | select(.pr == "#130") | .checks[]] == ["CI Gate 🟢 success"]) and
@@ -49,14 +54,35 @@ jq -e '
   ([.ci_diagnostics[] | select(.pr == 131)][0].error | contains("error[dangerous-triggers]")) and
   ([.ci_diagnostics[] | select(.pr == 131)][0].error | contains("pull_request_target")) and
   ([.ci_diagnostics[] | select(.pr == 131)][0].error | contains("Process completed with exit code") | not) and
+  ([.ci_diagnostics[] | select(.pr == 131)][0].evidence | length > 1) and
+  ([.ci_diagnostics[] | select(.pr == 131)][0].affected_paths == [".github/workflows/example.yml"]) and
   ([.ci_diagnostics[] | select(.pr == 131)][0].location == "./.github/workflows/example.yml:3:1") and
-  ([.ci_diagnostics[] | select(.pr == 131)][0].escalation == "FIX: address the reported failure")
+  ([.ci_diagnostics[] | select(.pr == 131)][0].escalation == "FIX: address the reported failure") and
+  ([.current_prs[] | select(.pr == "#131")][0].possible_dependencies[0].target == 130) and
+  ([.current_prs[] | select(.pr == "#131")][0].possible_dependencies[0].source == "Issue #31 comment") and
+  ([.current_prs[] | select(.pr == "#132")][0].issue == null) and
+  ([.current_prs[] | select(.pr == "#132")][0].declared_closing_refs == [999]) and
+  ([.current_prs[] | select(.pr == "#132")][0].recognized_closing_refs == []) and
+  ([.current_prs[] | select(.pr == "#132")][0].possible_dependencies | length == 1) and
+  ([.current_prs[] | select(.pr == "#132")][0].possible_dependencies[0].target == 130) and
+  ([.current_prs[] | select(.pr == "#132")][0].possible_dependencies[0].head == "abc123") and
+  ([.ci_diagnostics[] | select(.pr == 132)] | length == 1) and
+  ([.ci_diagnostics[] | select(.pr == 132)][0].error == "linking: exactly one closing issue reference is required") and
+  ([.ci_diagnostics[] | select(.pr == 132)][0].escalation == "FIX: address the reported failure")
 ' <<<"$live_json" >/dev/null
 
 text="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" md)"
-diagnose_text="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" diagnose md)"
+diagnose_text="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" diagnose --all md)"
+targeted_text="$(PROJECT_STATUS_MOCK_DIR="$FIXTURES" "$DIR/project-status" diagnose --pr 11 md)"
 grep -Fq '## CI Diagnostics' <<<"$diagnose_text"
 grep -Fq 'src/workflow.yml:42:7' <<<"$diagnose_text"
+grep -Fq '#11 Conflicting issue 5' <<<"$targeted_text"
+if grep -Fq '#10 Implements issue 2' <<<"$targeted_text"; then
+  echo "targeted digest unexpectedly included an unselected PR" >&2
+  exit 1
+fi
+grep -Fq 'Confirmed: PR #10 [OPEN] — declared in PR body' <<<"$text"
+grep -Fq '#21 Unlinked PR (no closing Issue)' <<<"$text"
 bytes="$(printf '%s' "$text" | wc -c | tr -d ' ')"
 lines="$(printf '%s\n' "$text" | wc -l | tr -d ' ')"
 (( bytes <= 8192 ))
