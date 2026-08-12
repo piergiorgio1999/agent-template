@@ -5,6 +5,7 @@ FIXTURES="$(cd "$(dirname "$0")/../live" && pwd)"
 
 case "$1 $2" in
     "pr list") cat "$FIXTURES/prs.json" ;;
+    "pr view") jq --argjson number "$3" '[.[] | select(.number == $number) | .files[]?]' "$FIXTURES/prs.json" ;;
     "issue list") cat "$FIXTURES/issues.json" ;;
     "repo view") printf '%s\n' 'fixture/live-repository' ;;
     "run list")
@@ -14,14 +15,17 @@ case "$1 $2" in
     "run view")
         run_id="$3"
         shift 3
-        if [[ "$run_id" != "200" ]]; then
-            echo "unexpected run: $run_id" >&2
-            exit 98
-        fi
         if [[ " $* " == *" --json jobs "* ]]; then
             while (($#)); do
                 if [[ "$1" == "--jq" ]]; then
-                    jq -r "$2" "$FIXTURES/run-200.json"
+                    if [[ "$run_id" == "200" ]]; then
+                        jq -r "$2" "$FIXTURES/run-200.json"
+                    elif [[ "$run_id" == "201" ]]; then
+                        jq -nr '{name:"CI",url:"https://github.com/example/repo/actions/runs/201",jobs:[{databaseId:2011,name:"linking",conclusion:"failure",steps:[{name:"Verify native Issue/PR link",conclusion:"failure"}]}]} | '"$2"
+                    else
+                        echo "unexpected run: $run_id" >&2
+                        exit 98
+                    fi
                     exit 0
                 fi
                 shift
@@ -29,12 +33,22 @@ case "$1 $2" in
             echo "missing --jq for jobs" >&2
             exit 95
         elif [[ " $* " == *" --json name,url "* ]]; then
-            jq '{name,url}' "$FIXTURES/run-200.json"
-        elif [[ " $* " == *" --job 2001 --log-failed "* ]]; then
+            if [[ "$run_id" == "200" ]]; then
+                jq '{name,url}' "$FIXTURES/run-200.json"
+            elif [[ "$run_id" == "201" ]]; then
+                printf '%s\n' '{"name":"CI","url":"https://github.com/example/repo/actions/runs/201"}'
+            else
+                echo "unexpected run: $run_id" >&2
+                exit 98
+            fi
+        elif [[ "$run_id" == "200" && " $* " == *" --job 2001 --log-failed "* ]]; then
             printf 'security\tZizmor\t2026-08-12T03:00:01Z ^[[31m^[[91merror[dangerous-triggers]^[[0m^[[1m: use of fundamentally insecure workflow trigger^[[0m\n'
             printf 'security\tZizmor\t2026-08-12T03:00:02Z  --> ./.github/workflows/example.yml:3:1\n'
             printf 'security\tZizmor\t2026-08-12T03:00:03Z \033[31m4 | pull_request_target:\033[0m\n'
             printf 'security\tZizmor\t2026-08-12T03:00:04Z ##[error]Process completed with exit code 14.\n'
+        elif [[ "$run_id" == "201" && " $* " == *" --job 2011 --log-failed "* ]]; then
+            printf 'linking\tVerify native Issue/PR link\t2026-08-12T04:00:01Z linking: exactly one closing issue reference is required\n'
+            printf 'linking\tVerify native Issue/PR link\t2026-08-12T04:00:02Z ##[error]Process completed with exit code 1.\n'
         else
             echo "unexpected run view arguments: $*" >&2
             exit 99
