@@ -28,7 +28,7 @@ jobs:
             .[] as $pr |
             (($pr.statusCheckRollup // []) | current_checks[]) |
             select((((.conclusion // .state // "") | ascii_upcase) | IN("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED"))) |
-            (.detailsUrl // "" | capture("/actions/runs/(?<id>[0-9]+)")?.id) as $run_id |
+            (try ((.detailsUrl // "" | capture("/actions/runs/(?<id>[0-9]+)") | .id)) catch null) as $run_id |
             select($run_id != null) |
             [$run_id, ($pr.number | tostring), (.name // .context // "unnamed")] | @tsv
           ' <<<"$prs_json" | sort -t $'\t' -k1,1 -u)"
