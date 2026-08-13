@@ -80,6 +80,14 @@ Leggi SPEC-V1.md prima di ogni modifica | non reimplementare esistente | no cust
   Anche in questi casi: l'agente segnala e attende istruzione.
 
 ## 13. MAPPE DERIVATE DEL REPOSITORY
+
+⚠️ **NOTA IMPLEMENTAZIONE**: Questa sezione descrive il contratto delle mappe derivate
+per V1.2. Le funzionalità specificate non sono ancora implementate. Lo stato attuale
+è registrato in `acceptance/cases/ACC-24.md` attraverso `acceptance/cases/ACC-29.md`.
+I comandi e le interfacce descritti qui sono vincolanti dal punto di vista del contratto,
+ma non disponibili per l'uso fino al completamento della loro implementazione e verifica
+dell'acceptance.
+
 1. Il template espone tre alberi gerarchici read-only, percorsi dalla radice
    fino a ogni foglia disponibile senza profondità fissa:
    - `dependencies`: componenti e dipendenze dichiarate;
