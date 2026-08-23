@@ -9,7 +9,16 @@ SELECTED_PRS=()
 
 usage() {
     echo "Usage: project-status [diagnose] [md|json] [--repo OWNER/REPO] [--pr NUMBER ... | --all]" >&2
+    echo "       project-status map TYPE FORMAT [--full]" >&2
 }
+
+# Map modes are a mode of this tool, not a fifth custom tool (SPEC-V1.md
+# section 13 point 4). Dispatched before option parsing because the map
+# grammar is positional and disjoint from the digest grammar.
+if [[ "${1:-}" == "map" ]]; then
+    shift
+    exec "$(dirname "$0")/map" "$@"
+fi
 
 while (($#)); do
     case "$1" in
