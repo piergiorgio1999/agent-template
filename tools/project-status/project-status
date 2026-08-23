@@ -240,7 +240,7 @@ if [[ "$MODE" == "diagnose" ]]; then
           .[] | select(.state == "OPEN") | select(.number as $number | $targets | index($number)) | .number as $pr |
           ((.statusCheckRollup // []) | current_checks[]) |
           select(((.conclusion // .state // "") | ascii_upcase) | IN("FAILURE","ERROR","CANCELLED","TIMED_OUT","ACTION_REQUIRED")) |
-          (.detailsUrl // "" | capture("/actions/runs/(?<id>[0-9]+)")?.id) as $run_id |
+          (try (.detailsUrl // "" | capture("/actions/runs/(?<id>[0-9]+)").id) catch null) as $run_id |
           select($run_id != null) | [$pr,$run_id] | @tsv
         ' <<<"$prs_json" | sort -u)
         diagnostics="$(jq -s '.' "$diagnostics_file")"
