@@ -1,0 +1,310 @@
+#!/usr/bin/env bash
+# Deterministic repository map views (SPEC-V1.md section 13).
+#
+# Emits one ordered tree per TYPE, rendered in one of two textual FORMATs.
+# Both formats are rendered from the same ordered node stream, so they are
+# semantically equivalent by construction rather than by convention.
+#
+# The node stream is "depth<TAB>label", depth-first pre-order, depth >= 1.
+# The root node "repository" is implicit and supplied by the renderers.
+#
+# JSON is deliberately not a public output format (SPEC section 13 point 5).
+set -Eeuo pipefail
+
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+source "$ROOT/tools/lib/common.sh"
+
+require_jq
+require_git
+
+cd "$ROOT"
+
+SCOPE_MAP="$ROOT/scope-map.json"
+
+# Preview limits (SPEC section 13 point 7). Independent of any tokenizer.
+PREVIEW_MAX_BYTES=8192
+PREVIEW_MAX_LINES=100
+
+TYPE=""
+FORMAT=""
+FULL=false
+
+usage() {
+    echo "Usage: project-status map TYPE FORMAT [--full]" >&2
+    echo "  TYPE=dependencies|ci   FORMAT=outline|mermaid" >&2
+}
+
+while (($#)); do
+    case "$1" in
+        dependencies|ci) [[ -n "$TYPE" ]] && { usage; exit 2; }; TYPE="$1" ;;
+        status)
+            echo "project-status map: TYPE 'status' is not implemented yet" >&2
+            exit 2
+            ;;
+        outline|mermaid) [[ -n "$FORMAT" ]] && { usage; exit 2; }; FORMAT="$1" ;;
+        --full) FULL=true ;;
+        --repo)
+            # SPEC section 13 point 5: --repo is admitted only for `status`.
+            echo "project-status map: --repo is admitted only for TYPE 'status'" >&2
+            exit 2
+            ;;
+        -h|--help) usage; exit 0 ;;
+        *) usage; exit 2 ;;
+    esac
+    shift
+done
+
+[[ -n "$TYPE" && -n "$FORMAT" ]] || { usage; exit 2; }
+
+# ---------------------------------------------------------------------------
+# Tree builders. Each emits "depth<TAB>label" in depth-first pre-order.
+# ---------------------------------------------------------------------------
+
+# Manifests recognized by SPEC section 13 point 2. Those that are recognized
+# but not analysed in V1.2 must say so explicitly: silent omission is
+# forbidden, so they get a literal "details unavailable" leaf.
+is_recognized_manifest() {
+    case "${1##*/}" in
+        package.json|Package.resolved) return 0 ;;
+        Package.swift|pyproject.toml|Cargo.toml|go.mod) return 0 ;;
+        requirements*.txt) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+manifest_is_supported() {
+    case "${1##*/}" in
+        package.json|Package.resolved) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Direct dependency groups of a package.json, in contract order.
+#
+# A supported manifest that declares nothing still gets an explicit leaf: an
+# empty subtree would be indistinguishable from an unread source, and SPEC
+# section 13 point 2 forbids silent omission.
+emit_package_json_groups() {
+    local path="$1" group emitted=""
+    for group in dependencies devDependencies optionalDependencies peerDependencies; do
+        jq -e --arg g "$group" 'has($g) and (.[$g] | type == "object") and ((.[$g] | length) > 0)' \
+            "$path" >/dev/null 2>&1 || continue
+        emitted=yes
+        printf '3\t%s\n' "$group"
+        jq -r --arg g "$group" '.[$g] | to_entries[] | "\(.key) \(.value)"' "$path" \
+            | LC_ALL=C sort \
+            | while IFS= read -r entry; do
+                [[ -n "$entry" ]] && printf '4\t%s\n' "$entry"
+            done
+    done
+    [[ -z "$emitted" ]] && printf '3\tno declared dependencies\n'
+    return 0
+}
+
+# Package.resolved pins. Both the v1 (.object.pins) and v2 (.pins) shapes are
+# accepted; anything else is reported as unavailable rather than guessed at.
+emit_package_resolved_pins() {
+    local path="$1" pins
+    pins="$(jq -r '
+        ((.pins // .object.pins) // []) []
+        | "\(.identity // .package // "unknown") \((.state.version // .state.revision // "unpinned"))"
+    ' "$path" 2>/dev/null | LC_ALL=C sort || true)"
+    if [[ -z "$pins" ]]; then
+        printf '3\tdetails unavailable\n'
+        return
+    fi
+    printf '3\tpins\n'
+    while IFS= read -r pin; do
+        [[ -n "$pin" ]] && printf '4\t%s\n' "$pin"
+    done <<< "$pins"
+}
+
+build_dependencies() {
+    local manifests scope path current_scope=""
+
+    # Git-tracked manifests only: the map derives from tracked sources, never
+    # from whatever happens to sit in the working tree.
+    manifests="$(git ls-files | while IFS= read -r f; do
+        if is_recognized_manifest "$f"; then printf '%s\n' "$f"; fi
+    done)"
+
+    # Order: scope, then path (SPEC section 13 point 6).
+    [[ -z "$manifests" ]] && return 0
+    while IFS=$'\t' read -r scope path; do
+        [[ -z "$path" ]] && continue
+        if [[ "$scope" != "$current_scope" ]]; then
+            printf '1\t%s\n' "$scope"
+            current_scope="$scope"
+        fi
+        printf '2\t%s\n' "$path"
+        if ! manifest_is_supported "$path"; then
+            printf '3\tdetails unavailable\n'
+        elif [[ "${path##*/}" == "package.json" ]]; then
+            emit_package_json_groups "$path"
+        else
+            emit_package_resolved_pins "$path"
+        fi
+    done <<< "$(
+        while IFS= read -r f; do
+            [[ -z "$f" ]] && continue
+            printf '%s\t%s\n' "$(classify_path "$SCOPE_MAP" "$f")" "$f"
+        done <<< "$manifests" | LC_ALL=C sort
+    )"
+}
+
+# The CI view is the normative sequence of SPEC section 9. It is a view of the
+# contract, NOT a DAG extracted from the workflow, and it does not claim to
+# describe the workflow's completeness (SPEC section 13 point 2).
+build_ci() {
+    printf '1\tci\n'
+    printf '2\tcontract view of SPEC section 9 (not an extracted workflow DAG)\n'
+
+    printf '3\tsequence\n'
+    local i=0 step
+    for step in checkout anti-rot actionlint zizmor gitleaks "paths detection" \
+                "scope guard" "language detection" "static checks" test build \
+                "test reporter" "CI Gate"; do
+        i=$((i + 1))
+        printf '4\t%02d %s\n' "$i" "$step"
+    done
+
+    printf '3\tconcurrency\n'
+    printf '4\tmain cancel-in-progress false\n'
+    printf '4\tpull request cancel-in-progress true\n'
+
+    printf '3\tpermissions\n'
+    printf '4\tGITHUB_TOKEN default contents read\n'
+    printf '4\televations per job only\n'
+
+    printf '3\ttimeout\n'
+    printf '4\tlinux static 10m\n'
+    printf '4\tlinux test build 20m\n'
+    printf '4\tmacos swift 30m\n'
+    printf '4\tself test 30m\n'
+}
+
+# ---------------------------------------------------------------------------
+# Renderers. Both consume the same node stream on stdin.
+# ---------------------------------------------------------------------------
+
+render_outline() {
+    # Literal root, two UTF-8 spaces per level (SPEC section 13 point 5).
+    printf 'repository\n'
+    local depth label indent
+    while IFS=$'\t' read -r depth label; do
+        [[ -z "$depth" ]] && continue
+        indent=""
+        local n=0
+        while ((n < depth)); do
+            indent="$indent  "
+            n=$((n + 1))
+        done
+        printf '%s%s\n' "$indent" "$label"
+    done
+}
+
+# Label escaping, in the contract order: & first, otherwise the entities
+# introduced by the later substitutions would themselves be escaped.
+escape_label() {
+    local s="$1"
+    s="${s//&/&amp;}"
+    s="${s//\"/&quot;}"
+    s="${s//</&lt;}"
+    s="${s//>/&gt;}"
+    printf '%s' "$s"
+}
+
+render_mermaid() {
+    printf 'flowchart TD\n'
+    # parent_at[d] holds the mermaid id of the most recent node at depth d,
+    # so a node at depth d attaches to parent_at[d-1]. Bash 3.2: plain arrays.
+    local -a parent_at
+    local seq=1 depth label id
+    parent_at[0]="n0001"
+    printf '  n0001["repository"]\n'
+    while IFS=$'\t' read -r depth label; do
+        [[ -z "$depth" ]] && continue
+        seq=$((seq + 1))
+        id="$(printf 'n%04d' "$seq")"
+        printf '  %s["%s"]\n' "$id" "$(escape_label "$label")"
+        printf '  %s --> %s\n' "${parent_at[$((depth - 1))]}" "$id"
+        parent_at[depth]="$id"
+    done
+}
+
+render() {
+    case "$FORMAT" in
+        outline) render_outline ;;
+        mermaid) render_mermaid ;;
+    esac
+}
+
+# ---------------------------------------------------------------------------
+# Preview selection.
+#
+# SPEC section 13 point 7: the SAME node prefix is selected for both formats
+# before rendering, and an explicit "omitted N" leaf is appended. Silent
+# omission is forbidden. The prefix must therefore satisfy the limits in the
+# more verbose format as well, which is why both are measured.
+# ---------------------------------------------------------------------------
+
+NODES_FILE="$(mktemp)"
+RENDER_FILE="$(mktemp)"
+trap 'rm -f "$NODES_FILE" "$RENDER_FILE"' EXIT
+
+case "$TYPE" in
+    dependencies) build_dependencies > "$NODES_FILE" ;;
+    ci) build_ci > "$NODES_FILE" ;;
+esac
+
+TOTAL="$(wc -l < "$NODES_FILE" | tr -d '[:space:]')"
+
+# Render the first $1 nodes, appending the omitted leaf when truncating.
+render_prefix() {
+    local keep="$1" omitted=$((TOTAL - $1))
+    {
+        head -n "$keep" "$NODES_FILE"
+        if ((omitted > 0)); then
+            printf '1\tomitted %d\n' "$omitted"
+        fi
+    } | render
+}
+
+prefix_fits() {
+    local keep="$1" fmt
+    for fmt in outline mermaid; do
+        FORMAT="$fmt" render_prefix "$keep" > "$RENDER_FILE"
+        (($(wc -c < "$RENDER_FILE") > PREVIEW_MAX_BYTES)) && return 1
+        (($(wc -l < "$RENDER_FILE") > PREVIEW_MAX_LINES)) && return 1
+    done
+    return 0
+}
+
+REQUESTED_FORMAT="$FORMAT"
+
+if [[ "$FULL" == "true" ]]; then
+    FORMAT="$REQUESTED_FORMAT"
+    render_prefix "$TOTAL"
+    exit 0
+fi
+
+# Rendered size is monotonic in the node count, so a binary search finds the
+# largest admissible prefix deterministically.
+if prefix_fits "$TOTAL"; then
+    KEEP="$TOTAL"
+else
+    LO=0
+    HI="$TOTAL"
+    while ((LO < HI)); do
+        MID=$(((LO + HI + 1) / 2))
+        if prefix_fits "$MID"; then
+            LO="$MID"
+        else
+            HI=$((MID - 1))
+        fi
+    done
+    KEEP="$LO"
+fi
+
+FORMAT="$REQUESTED_FORMAT"
+render_prefix "$KEEP"

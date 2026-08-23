@@ -38,17 +38,8 @@ if [[ -z "$CHANGED_FILES" ]]; then
     exit 0
 fi
 
-SCOPE_NAMES="$(jq -r '.scopes[].name' "$SCOPE_MAP")"
-
 classify_file() {
-    local file="$1" name pattern
-    while IFS= read -r name; do
-        while IFS= read -r pattern; do
-            # shellcheck disable=SC2053
-            [[ "$file" == $pattern ]] && { echo "$name"; return 0; }
-        done <<< "$(jq -r --arg n "$name" '.scopes[] | select(.name==$n) | .paths[]' "$SCOPE_MAP")"
-    done <<< "$SCOPE_NAMES"
-    echo "unclassified"
+    classify_path "$SCOPE_MAP" "$1"
 }
 
 unclassified=0

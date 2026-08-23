@@ -157,6 +157,7 @@
 ./tools/lib/common.sh
 ./tools/project-status/fixtures/sample.json
 ./tools/project-status/json-format
+./tools/project-status/map
 ./tools/project-status/md-format
 ./tools/project-status/project-status
 ./tools/project-status/schema/status-schema.json
