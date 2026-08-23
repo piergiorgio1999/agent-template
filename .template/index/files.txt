@@ -24,6 +24,7 @@
 ./.github/workflows/rerun-failed-pr-ci.yml
 ./.github/workflows/scope-exception-sync.yml
 ./.github/workflows/scorecard.yml
+./.github/workflows/test-rerun-failed-pr-ci.sh
 ./.gitignore
 ./.gitleaks.toml
 ./.template/contracts/custom-tools.md
