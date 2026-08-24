@@ -9,7 +9,7 @@ SELECTED_PRS=()
 
 usage() {
     echo "Usage: project-status [diagnose] [md|json] [--repo OWNER/REPO] [--pr NUMBER ... | --all]" >&2
-    echo "       project-status map TYPE FORMAT [--full]" >&2
+    echo "       project-status map TYPE FORMAT [--full] [--repo OWNER/REPO]" >&2
 }
 
 # Map modes are a mode of this tool, not a fifth custom tool (SPEC-V1.md

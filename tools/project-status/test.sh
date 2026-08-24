@@ -247,7 +247,8 @@ preview_outline="$(map dependencies outline)"
 # CLI grammar: invalid combinations are rejected.
 for bad_args in "dependencies" "outline" "bogus outline" "dependencies bogus" \
                 "dependencies outline mermaid" "dependencies outline --repo o/r" \
-                "status outline"; do
+                "ci outline --repo o/r" "--repo o/r dependencies outline" \
+                "status" "status bogus" "status outline --repo"; do
     # shellcheck disable=SC2086
     if map $bad_args >/dev/null 2>&1; then
         echo "map: accepted invalid arguments: $bad_args" >&2
@@ -256,5 +257,124 @@ for bad_args in "dependencies" "outline" "bogus outline" "dependencies bogus" \
 done
 
 rm -rf "$map_repo"
+
+# ---------------------------------------------------------------------------
+# Live status view (SPEC-V1.md section 13, TYPE=status) — ACC-24, ACC-25.
+#
+# `status` is derived from the digest, so it runs against the real tool tree
+# with the digest's own GitHub access mocked out. No fixture below reaches
+# GitHub and none of them writes anything back.
+# ---------------------------------------------------------------------------
+
+status_map() {
+    local fixtures="$1"
+    shift
+    PROJECT_STATUS_MOCK_DIR="$fixtures" "$DIR/map" status "$@"
+}
+
+# Shipped fixtures: issues in progress with their pull requests, blocked work,
+# attention, and open pull requests that no current issue reaches.
+status_outline="$(status_map "$FIXTURES" outline --full)"
+
+[[ "$(head -n1 <<<"$status_outline")" == "repository" ]]
+for status_category in progress current next blocked attention "done" \
+                       "pull requests without a current issue"; do
+    grep -Fxq "  $status_category" <<<"$status_outline"
+done
+
+# Digest categories and semantics, not a second interpretation of GitHub.
+grep -Fxq '    #2 In progress' <<<"$status_outline"
+grep -Fxq '      pr #10 Implements issue 2' <<<"$status_outline"
+grep -Fxq '        diagnosis PASS: checks complete' <<<"$status_outline"
+grep -Fxq '    #6 Blocked issue' <<<"$status_outline"
+grep -Fxq '    PR #14 Action required' <<<"$status_outline"
+grep -Fxq '    #1 Closed work' <<<"$status_outline"
+
+# A pull request no current issue reaches is listed, never dropped.
+grep -Fxq '    pr #22 Unlinked PR' <<<"$status_outline"
+grep -Fxq '      no linked issue' <<<"$status_outline"
+grep -Fxq '      no visible check' <<<"$status_outline"
+
+# Issues are ordered by number, not by rendered text: #5 precedes #20.
+[[ "$(grep -n '^    #5 Feature$' <<<"$status_outline" | cut -d: -f1)" \
+   -lt "$(grep -n '^    #20 Pending PR$' <<<"$status_outline" | cut -d: -f1)" ]]
+
+# At least four levels below the root.
+grep -Eq '^        (unnamed|review|security) ' <<<"$status_outline"
+
+# The live snapshot never leaks the digest timestamp or an absolute path.
+for map_format in outline mermaid; do
+    rendered="$(status_map "$FIXTURES" "$map_format")"
+    if grep -Eq '[0-9]{4}-[0-9]{2}-[0-9]{2}T' <<<"$rendered"; then
+        echo "map: digest timestamp leaked into status/$map_format" >&2; exit 1
+    fi
+    if grep -Eq '/(Users|home|tmp|private)/' <<<"$rendered"; then
+        echo "map: absolute path leaked into status/$map_format" >&2; exit 1
+    fi
+    [[ "$rendered" == "$(status_map "$FIXTURES" "$map_format")" ]]
+done
+
+# Both formats derive from the same ordered tree, preview included.
+status_outline_nodes="$(status_map "$FIXTURES" outline | tail -n +2 | wc -l | tr -d ' ')"
+status_mermaid_nodes="$(status_map "$FIXTURES" mermaid | grep -c '^  n[0-9]\{4\}\["')"
+(( status_outline_nodes == status_mermaid_nodes - 1 ))
+
+# Preview limits and the explicit omitted leaf; --full keeps the same prefix.
+status_preview="$(status_map "$FIXTURES" outline)"
+(( $(printf '%s\n' "$status_preview" | wc -c | tr -d ' ') <= 8192 ))
+(( $(printf '%s\n' "$status_preview" | wc -l | tr -d ' ') <= 100 ))
+grep -Eq 'omitted [0-9]+' <<<"$status_preview"
+if grep -Eq 'omitted [0-9]+' <<<"$status_outline"; then
+    echo "map: --full must not truncate status" >&2; exit 1
+fi
+[[ "$(printf '%s\n' "$status_outline" | head -n 5)" == "$(printf '%s\n' "$status_preview" | head -n 5)" ]]
+
+# Empty state: every category is stated explicitly.
+status_empty="$(mktemp -d)"
+printf '%s\n' '[]' > "$status_empty/issues.json"
+printf '%s\n' '[]' > "$status_empty/prs.json"
+empty_outline="$(status_map "$status_empty" outline --full)"
+(( $(grep -c '^    none$' <<<"$empty_outline") >= 5 ))
+grep -Fxq '      none' <<<"$empty_outline"
+if grep -Eq 'omitted [0-9]+' <<<"$(status_map "$status_empty" outline)"; then
+    echo "map: empty status must not be truncated" >&2; exit 1
+fi
+rm -rf "$status_empty"
+
+# Blocked state: a label-blocked issue stays out of current and inside blocked.
+status_blocked="$(mktemp -d)"
+jq -n '[{number: 3, title: "Halted", state: "OPEN",
+         labels: [{name: "status:blocked"}], milestone: null,
+         subIssues: [], blockedBy: [], blocking: []}]' > "$status_blocked/issues.json"
+printf '%s\n' '[]' > "$status_blocked/prs.json"
+blocked_outline="$(status_map "$status_blocked" outline --full)"
+grep -Fxq '    #3 Halted' <<<"$blocked_outline"
+[[ "$(grep -n '^  blocked$' <<<"$blocked_outline" | cut -d: -f1)" \
+   -lt "$(grep -n '^    #3 Halted$' <<<"$blocked_outline" | cut -d: -f1)" ]]
+rm -rf "$status_blocked"
+
+# A pull request reachable from two current issues is expanded once and then
+# closed by an explicit stable reference (SPEC section 13 point 1).
+status_shared="$(mktemp -d)"
+jq -n '[{number: 1, title: "Alpha", state: "OPEN", labels: [], milestone: null,
+         subIssues: [], blockedBy: [], blocking: []},
+        {number: 2, title: "Beta", state: "OPEN", labels: [], milestone: null,
+         subIssues: [], blockedBy: [], blocking: []}]' > "$status_shared/issues.json"
+# Two failing checks, declared in reverse name order: the map orders checks by
+# name (SPEC section 13 point 6), the API order is not authoritative.
+jq -n '[{number: 9, title: "Shared", state: "OPEN", labels: [],
+         closingIssuesReferences: [{number: 1}, {number: 2}],
+         statusCheckRollup: [{name: "zeta check", conclusion: "FAILURE", status: "COMPLETED"},
+                             {name: "alpha check", conclusion: "FAILURE", status: "COMPLETED"}],
+         mergeStateStatus: "CLEAN", headRefOid: "0000000"}]' > "$status_shared/prs.json"
+shared_outline="$(status_map "$status_shared" outline --full)"
+grep -Fxq '      pr #9 Shared' <<<"$shared_outline"
+grep -Fxq '      ref pr #9' <<<"$shared_outline"
+(( $(grep -c 'diagnosis ' <<<"$shared_outline") == 1 ))
+[[ "$(grep -n 'alpha check' <<<"$shared_outline" | cut -d: -f1)" \
+   -lt "$(grep -n 'zeta check' <<<"$shared_outline" | cut -d: -f1)" ]]
+# --repo is admitted for status.
+status_map "$status_shared" outline --repo owner/repo >/dev/null
+rm -rf "$status_shared"
 
 echo "project-status tests: PASS"
