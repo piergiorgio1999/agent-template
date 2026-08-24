@@ -36,6 +36,18 @@ for locale_file in config/template/comment-locales/*.json; do
 done
 check "comment locales contain all required messages" test "$locale_status" -eq 0
 
+# Static repository map freshness (SPEC-V1.md section 13 point 8).
+#
+# The blocks are regenerated into temporary storage and compared byte-for-byte.
+# Nothing is written: a stale block fails the pull request, it is never
+# repaired by CI, because an auto-commit would make the derived view edit the
+# source it derives from.
+if [[ -f README.md && -x tools/project-status/readme-maps ]]; then
+    check "README repository maps are fresh" tools/project-status/readme-maps check
+else
+    echo "✅ README repository maps (check skipped: README.md or renderer absent)"
+fi
+
 # Helper to compare versions: X.Y.Z compatible with X.Y (major.minor must match)
 compare_versions() {
     local semver="$1" contract="$2"
