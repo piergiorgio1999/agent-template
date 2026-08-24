@@ -160,6 +160,7 @@
 ./tools/project-status/map
 ./tools/project-status/md-format
 ./tools/project-status/project-status
+./tools/project-status/readme-maps
 ./tools/project-status/schema/status-schema.json
 ./tools/project-status/test.sh
 ./tools/project-status/tests/fake-bin/gh

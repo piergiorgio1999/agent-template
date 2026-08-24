@@ -377,4 +377,136 @@ grep -Fxq '      ref pr #9' <<<"$shared_outline"
 status_map "$status_shared" outline --repo owner/repo >/dev/null
 rm -rf "$status_shared"
 
+
+# ---------------------------------------------------------------------------
+# README generated blocks and fail-closed freshness (SPEC-V1.md section 13
+# points 3 and 8) — ACC-26, ACC-27.
+# ---------------------------------------------------------------------------
+
+bash -n "$DIR/readme-maps"
+
+readme_repo="$(mktemp -d)"
+mkdir -p "$readme_repo/tools/lib" "$readme_repo/tools/project-status" "$readme_repo/pkg"
+cp "$DIR/../lib/common.sh" "$readme_repo/tools/lib/common.sh"
+cp "$DIR/map" "$DIR/readme-maps" "$readme_repo/tools/project-status/"
+cp "$DIR/../../scope-map.json" "$readme_repo/scope-map.json"
+printf '%s\n' '{ "dependencies": { "left-pad": "1.0.0" } }' > "$readme_repo/pkg/package.json"
+{
+    printf '# Demo\n\n'
+    printf '<!-- repository-map:dependencies:start -->\n'
+    printf '<!-- repository-map:dependencies:end -->\n\n'
+    printf '<!-- repository-map:ci:start -->\n'
+    printf '<!-- repository-map:ci:end -->\n'
+} > "$readme_repo/README.md"
+git -C "$readme_repo" init -q
+git -C "$readme_repo" add -A
+readme_maps() { (cd "$readme_repo" && ./tools/project-status/readme-maps "$@"); }
+
+# Empty blocks are stale: the check fails before anything is generated.
+if readme_maps check >/dev/null 2>&1; then
+    echo "readme-maps: empty blocks were accepted as fresh" >&2; exit 1
+fi
+
+readme_maps update
+readme_maps check
+
+# Each block carries both renderings of the same tree.
+(( $(grep -c '^```mermaid$' "$readme_repo/README.md") == 2 ))
+(( $(grep -c '^```text$' "$readme_repo/README.md") == 2 ))
+grep -Fq 'left-pad 1.0.0' "$readme_repo/README.md"
+grep -Fq 'flowchart TD' "$readme_repo/README.md"
+
+# The live view is never persisted (SPEC section 13 point 3).
+if grep -Fq 'repository-map:status' "$readme_repo/README.md"; then
+    echo "readme-maps: the live status view was written into README.md" >&2; exit 1
+fi
+
+# Regeneration is idempotent: no churn in the diff on an unchanged tree.
+readme_before="$(cat "$readme_repo/README.md")"
+readme_maps update
+[[ "$readme_before" == "$(cat "$readme_repo/README.md")" ]]
+
+# A change in a tracked manifest makes the committed block stale.
+printf '%s\n' '{ "dependencies": { "left-pad": "1.0.0", "right-pad": "2.0.0" } }' \
+    > "$readme_repo/pkg/package.json"
+git -C "$readme_repo" add -A
+if readme_maps check >/dev/null 2>&1; then
+    echo "readme-maps: a stale block passed the freshness check" >&2; exit 1
+fi
+# The check never writes: the stale README is left exactly as it was.
+[[ "$readme_before" == "$(cat "$readme_repo/README.md")" ]]
+readme_maps update
+readme_maps check
+grep -Fq 'right-pad 2.0.0' "$readme_repo/README.md"
+
+# Missing, duplicated and inverted markers all fail.
+cp "$readme_repo/README.md" "$readme_repo/README.good"
+for marker_case in delete duplicate invert; do
+    case "$marker_case" in
+        delete) grep -v 'repository-map:ci:end' "$readme_repo/README.good" > "$readme_repo/README.md" ;;
+        duplicate) { cat "$readme_repo/README.good"; printf '<!-- repository-map:ci:start -->\n'; } > "$readme_repo/README.md" ;;
+        invert) sed -e 's|<!-- repository-map:ci:start -->|MARK_A|' \
+                    -e 's|<!-- repository-map:ci:end -->|<!-- repository-map:ci:start -->|' \
+                    -e 's|MARK_A|<!-- repository-map:ci:end -->|' \
+                    "$readme_repo/README.good" > "$readme_repo/README.md" ;;
+    esac
+    if readme_maps check >/dev/null 2>&1; then
+        echo "readme-maps: malformed markers accepted ($marker_case)" >&2; exit 1
+    fi
+    if readme_maps update >/dev/null 2>&1; then
+        echo "readme-maps: update repaired malformed markers instead of failing ($marker_case)" >&2; exit 1
+    fi
+done
+cp "$readme_repo/README.good" "$readme_repo/README.md"
+readme_maps check
+
+# The pre-commit hook regenerates and stages the blocks on every commit.
+git -C "$readme_repo" add -A
+readme_maps install-hook >/dev/null
+printf '%s\n' '{ "dependencies": { "left-pad": "1.0.0", "zeta": "9.9.9" } }' \
+    > "$readme_repo/pkg/package.json"
+git -C "$readme_repo" add pkg/package.json
+git -C "$readme_repo" -c user.email=t@example.invalid -c user.name=t commit -qm "add zeta" >/dev/null 2>&1
+git -C "$readme_repo" show --stat --format= HEAD | grep -Fq 'README.md'
+readme_maps check
+
+# Unstaged README edits are never swept into the commit: the hook stops.
+printf '%s\n' '{ "dependencies": { "left-pad": "1.0.0", "omega": "1.1.1" } }' \
+    > "$readme_repo/pkg/package.json"
+printf '\nprose edit\n' >> "$readme_repo/README.md"
+git -C "$readme_repo" add pkg/package.json
+if git -C "$readme_repo" -c user.email=t@example.invalid -c user.name=t \
+        commit -qm "should stop" >/dev/null 2>&1; then
+    echo "readme-maps: hook swept unstaged README edits into a commit" >&2; exit 1
+fi
+git -C "$readme_repo" add -A
+git -C "$readme_repo" -c user.email=t@example.invalid -c user.name=t commit -qm "add omega" >/dev/null 2>&1
+readme_maps check
+
+
+# A README that is already fresh commits even with unrelated unstaged edits:
+# the hook asks whether regeneration changed anything, not whether the file
+# differs from the index.
+printf '\nunrelated prose\n' >> "$readme_repo/README.md"
+printf '%s\n' 'unrelated' > "$readme_repo/pkg/other.txt"
+git -C "$readme_repo" add pkg/other.txt
+git -C "$readme_repo" -c user.email=t@example.invalid -c user.name=t \
+    commit -qm "unrelated change" >/dev/null 2>&1
+git -C "$readme_repo" checkout -q -- README.md 2>/dev/null || true
+git -C "$readme_repo" add -A
+
+# An existing hook is preserved, never overwritten.
+readme_maps install-hook | grep -Fq 'preserving existing pre-commit hook'
+
+# CLI grammar.
+for bad_args in "" "render" "render status" "render bogus" "bogus"; do
+    # shellcheck disable=SC2086
+    if readme_maps $bad_args >/dev/null 2>&1; then
+        echo "readme-maps: accepted invalid arguments: $bad_args" >&2
+        exit 1
+    fi
+done
+
+rm -rf "$readme_repo"
+
 echo "project-status tests: PASS"

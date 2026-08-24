@@ -45,6 +45,16 @@ EOF
     echo "bootstrap: installed scope-guard pre-push hook"
 }
 
+# Keeps the generated README map blocks in step with every commit. CI stays
+# read-only and fail-closed (SPEC-V1.md section 13 points 4, 8 and 9), so
+# regeneration belongs here, on the developer's machine.
+install_repository_map_pre_commit_hook() {
+    if [[ ! -x tools/project-status/readme-maps ]]; then
+        return
+    fi
+    tools/project-status/readme-maps install-hook
+}
+
 for command in git gh jq copier shellcheck actionlint; do
     require_command "$command"
 done
@@ -116,6 +126,7 @@ fi
 
 gh api "repos/$target_repo/rulesets" --method POST --input .github/ruleset.json >/dev/null
 install_scope_guard_pre_push_hook
+install_repository_map_pre_commit_hook
 
 echo "bootstrap: repository created, initial commit pushed, and ruleset applied"
 echo "bootstrap: first CI and label-sync workflows are triggered by the main push"
