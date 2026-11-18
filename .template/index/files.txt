@@ -109,6 +109,7 @@
 ./config/template/comment-locales/en.json
 ./config/template/comment-locales/it.json
 ./config/template/integration-mode.json.jinja
+./config/template/pages.json.jinja
 ./config/template/project-status.json
 ./config/template/version.json
 ./contracts/README.md
