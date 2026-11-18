@@ -128,18 +128,22 @@ jobs:
             } >> "$report_file"
 
             if [[ -n "$failed_jobs" ]]; then
-              echo "### Job falliti" >> "$report_file"
-              echo >> "$report_file"
+              {
+                echo "### Job falliti"
+                echo
+              } >> "$report_file"
               while IFS=$'\t' read -r job_id job_name; do
                 [[ -n "$job_id" ]] || continue
                 failed_step="$(jq -r --arg id "$job_id" '
                   .[] | select((.id | tostring) == $id) | .steps // []
                   | map(select((.conclusion // "") | IN("failure", "timed_out")))
                   | first | .name // "(step non identificato)"' <<<"$jobs_json")"
-                echo "#### $job_name" >> "$report_file"
-                echo >> "$report_file"
-                echo "- Step fallito: **$failed_step**" >> "$report_file"
-                echo >> "$report_file"
+                {
+                  echo "#### $job_name"
+                  echo
+                  echo "- Step fallito: **$failed_step**"
+                  echo
+                } >> "$report_file"
                 log_file="$(mktemp)"
                 if gh api "repos/$REPOSITORY/actions/jobs/$job_id/logs" > "$log_file" 2>/dev/null; then
                   excerpt="$(grep -v -E '^[^ ]* *##\[(group|endgroup|debug)\]' "$log_file" \
@@ -149,14 +153,16 @@ jobs:
                 else
                   excerpt=""
                 fi
-                if [[ -n "$excerpt" ]]; then
-                  echo '```text' >> "$report_file"
-                  printf '%s\n' "$excerpt" >> "$report_file"
-                  echo '```' >> "$report_file"
-                else
-                  echo "> Log non disponibile tramite API (può essere scaduto o il job è stato annullato)." >> "$report_file"
-                fi
-                echo >> "$report_file"
+                {
+                  if [[ -n "$excerpt" ]]; then
+                    echo '```text'
+                    printf '%s\n' "$excerpt"
+                    echo '```'
+                  else
+                    echo "> Log non disponibile tramite API (può essere scaduto o il job è stato annullato)."
+                  fi
+                  echo
+                } >> "$report_file"
                 rm -f "$log_file"
               done <<< "$failed_jobs"
             fi
